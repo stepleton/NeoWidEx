@@ -74,7 +74,7 @@ UILOOP:
     BRA.S   UILOOP                   ; Get next user command
 
     ; Main loop option 1: Get Widget info.
-.m1 BSR     WIDGETINFO
+.m1 BSR     WINFOPRINT
     BRA.S   UILOOP
 
     ; Main loop option 2: Show thanks.
