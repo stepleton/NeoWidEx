@@ -53,7 +53,7 @@ ROMCHECK:
     MOVE.W  dTargetRom,D0            ; Copy target ROM version to D0
     CMP.W   kRomVWord,D0             ; Compare actual ROM version with target
     BEQ.S   INIT                     ; It's a match, so initialise NeoWidEx
-    mFail   0,<'SORRY... THIS NEOWIDEX WAS BUILT FOR BOOT ROM '>,kBootRom
+    mFail   #0,<'SORRY... THIS NEOWIDEX WAS BUILT FOR BOOT ROM '>,kBootRom
 
     ; ## 2. Set up the user interface ##
 INIT:
@@ -66,10 +66,12 @@ UILOOP:
 
     CMPI.B  #kKeyCode1,D0            ; Does the user want info about the Widget?
     BEQ.S   .m1                      ; Yes, jump to the Widget info-getting code
-    CMPI.B  #kKeyCode2,D0            ; Does the user want to see the thanks?
-    BEQ.S   .m2                      ; Yes, jump to the thanks code
-    CMPI.B  #kKeyCode3,D0            ; Does the user want to quit?
-    BEQ.S   .m3                      ; Yes, jump to quitting code
+    CMPI.B  #kKeyCode2,D0            ; Does the user want the spare table?
+    BEQ.S   .m2                      ; Yes, jump to spare table printing code
+    CMPI.B  #kKeyCode3,D0            ; Does the user want to see the thanks?
+    BEQ.S   .m3                      ; Yes, jump to the thanks code
+    CMPI.B  #kKeyCode4,D0            ; Does the user want to quit?
+    BEQ.S   .m4                      ; Yes, jump to quitting code
 
     BRA.S   UILOOP                   ; Get next user command
 
@@ -77,12 +79,16 @@ UILOOP:
 .m1 BSR     WINFOPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 2: Show thanks.
-.m2 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    ; Main loop option 2: Print spare table.
+.m2 BSR     SPAREPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 3: Quit and return to the ROM.
-.m3 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    ; Main loop option 3: Show thanks.
+.m3 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    BRA.S   UILOOP
+
+    ; Main loop option 4: Quit and return to the ROM.
+.m4 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
 
@@ -116,8 +122,9 @@ zReturnCode:
 sMainMenu:
     DC.B    'COMMANDS',0             ; Menu title
     DC.B    'DRIVE INFO    1',0
-    DC.B    'THANKS        2',0
-    DC.B    'QUIT          3',0
+    DC.B    'SPARE TABLE   2',0
+    DC.B    'THANKS        3',0
+    DC.B    'QUIT          4',0
     DC.B    0                        ; End of menu.
 
 
@@ -135,6 +142,7 @@ zSectorData:
 
     ; Designates NEOWIDEX as the beginning of the program.
     END    NEOWIDEX
+
 
 
 *~Font name~Courier New~

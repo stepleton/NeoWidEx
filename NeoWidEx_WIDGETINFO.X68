@@ -75,7 +75,8 @@ WIDGETINFO:
     TST.B   zIsWidgety               ; Is it a Widget?
     BEQ.S   .sc                      ; No; skip ahead to spares information
     ADDQ.W  #2,D0                    ; Yes, so two padding bytes
-    MOVE.W  (A0)+,zCylinders         ; Copy number of cylinders into RAM
+    MOVE.B  (A0)+,zCylinders         ; Cylinder count upper byte into RAM
+    MOVE.B  (A0)+,(zCylinders+1)     ; Cylinder count lower byte into RAM
     MOVE.B  (A0)+,zHeads             ; Copy number of heads into RAM
     MOVE.B  (A0)+,zSectors           ; Copy sectors per track into RAM
 
@@ -132,13 +133,14 @@ WIDGETINFO:
     ;   (none)
     ; Notes:
     ;   Runs WIDGETINFO if it hasn't been run yet, and in that case, has all
-    ;       of WIDGETINFO's side effects.
+    ;       of WIDGETINFO's side effects. Otherwise, there are no side effects
+    ;       beyond printing stuff.
 WINFOPRINT:
     BSR     WINFOMAYBE               ; Run WIDGETINFO if needed
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DRIVE INFO ---'>,endl
 
     MOVE.L  zDriveNamePtr,-(A7)      ; Drive type string pointer onto stack
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,s,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'.'>,endl
 
     MOVE.L  #zDeviceName,-(A7)       ; Drive device name pointer onto stack
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DEVICE NAME-/'>,s,<'/.'>
@@ -202,6 +204,88 @@ WINFOPRINT:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCKS-'>,hhx,endl
 
 .rt RTS                              ; Back to the caller
+
+
+    ; SPAREPRINT -- Read and print the spare table
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Runs WIDGETINFO if it hasn't been run yet, and in that case, has all
+    ;       of WIDGETINFO's side effects.
+SPAREPRINT:
+    BSR     WINFOMAYBE               ; Run WIDGETINFO if needed
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SPARE TABLE ---'>,endl
+    TST.B   zIsWidgety               ; Is this a Widget or a ProFile?
+    BEQ.S   _SPAREPRINTPR            ; It's a ProFile; jump to specialised code
+    BRA     _SPAREPRINTWI            ; It's a Widget; jump to specialised code
+
+_SPAREPRINTPR:
+    ; Load the ProFile's spare table.
+    MOVE.L  #$00FFFFFF,D1            ; Sector ID for the ProFile spare table
+    BSR     SECTOR                   ; Read the spare table
+    BCS     .rt                      ; Jump to return on error
+
+    ; Set A0 to the start of the spare table.
+    MOVEA.L #(zSectorTag+$1A),A0     ; Spare table is 26 bytes in
+
+    ; Print table of spared blocks.
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARE TABLE--'>,endl
+    CLR.W   D0                       ; Blank D0 word for DBEQ below
+    MOVE.B  zSparesInUse,D0          ; Spare count into D0
+    BEQ     .s3                      ; No spares? Skip to consume terminator
+    SUBQ.B  #1,D0                    ; Subtract 1 to make D0 a loop iterator
+.s1 m_cp3b  A0,D1                    ; Next spared sector into D1...
+    MOVE.L  D1,-(A7)                 ; ...and onto the stack
+    CMPI.W  #(kFirstCol+56),kCrtCol  ; Do we need a CR?
+    BLO.S   .s2                      ; No, print the entry
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a CR first
+.s2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,3x  ; Print space and entry
+    ADDQ.L  #3,A0                    ; On to the next spare table entry
+    DBEQ    D0,.s1                   ; Iterate till done with spares
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Follow table print with a CR
+
+    ; Check that the spare table ends with an $FFFFFF entry.
+.s3 m_cp3b  A0,D1                    ; Get what should be the terminator
+    CMP.L   #$00FFFFFF,D1            ; Is it the terminator?
+    BEQ     .s4                      ; Yes, carry on
+    MOVE.L  D1,-(A7)                 ; No, get ready to print it
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARE TABLE ENDS WITH '>,3x
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' AND NOT FFFFFF? ODD...'>,endl
+.s4 ADDQ.L  #3,A0                    ; Advance to the bad block table
+
+    ; Print table of bad blocks.
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCK TABLE--'>,endl
+    CLR.W   D0                       ; Blank D0 word for DBEQ below
+    MOVE.B  zBadBlocks,D0            ; Bad block count into D0
+    BEQ     .b3                      ; No bad blocks? Skip to consume terminator
+    SUBQ.B  #1,D0                    ; Subtract 1 to make it a loop iterator
+.b1 m_cp3b  A0,D1                    ; Next bad block into D1...
+    MOVE.L  D1,-(A7)                 ; ...and onto the stack
+    CMPI.W  #(kFirstCol+56),kCrtCol  ; Do we need a CR?
+    BLO.S   .b2                      ; No, print the entry
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a CR first
+.b2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,3x  ; Print space and entry
+    ADDQ.L  #3,A0                    ; On to the next bad block table entry
+    DBEQ    D0,.b1                   ; Iterate till done with bad blocks
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Follow table print with a CR
+
+    ; Check that the bad block tabel ends with an $FFFFFF entry.
+.b3 m_cp3b  A0,D1                    ; Get what should be the terminator
+    CMP.L   #$00FFFFFF,D1            ; Is it the terminator?
+    BEQ     .rt                      ; Yes, carry on
+    MOVE.L  D1,-(A7)                 ; No, get ready to print it
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCK TABLE ENDS WITH '>,3x
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' AND NOT FFFFFF? ODD...'>,endl
+
+.rt RTS                              ; Back to SPAREPRINT's caller
+
+_SPAREPRINTWI:
+    ; Load the Widget's spare table.
+    MOVE.L  #$00FFFFFE,D1            ; Sector ID for the Widget spare table
+    BSR     SECTOR                   ; Read the spare table
+    BCS     .rt                      ; Jump to return on error
+
+.rt RTS                              ; Back to SPAREPRINT's caller
 
 
     PAGE
@@ -443,3 +527,9 @@ sSigFallback:
 
 ** (Back to the code section) **
     SECTION kSecCode
+
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~

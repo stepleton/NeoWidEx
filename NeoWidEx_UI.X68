@@ -244,6 +244,8 @@ dMenuIds:
     DC.B    kKeyCode7                ; Same, for 7
     DC.B    kKeyCode8                ; Same, for 8
     DC.B    kKeyCode9                ; Same, for 9
+    
+    DS.W    0                        ; Force even alignment for following data
 
 
     PAGE
@@ -291,3 +293,9 @@ sThanks:
 
 ** (Back to the code section) **
     SECTION kSecCode
+
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
