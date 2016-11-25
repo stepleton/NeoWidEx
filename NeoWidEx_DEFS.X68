@@ -64,6 +64,7 @@ kSvcWidth   EQU  84-kMenuWidth       ; Service mode window width in chars/bytes
 
 kFirstRow   EQU  (kSvcStart/90)+20   ; First service mode text row (pixels)
 kFirstCol   EQU  kMenuWidth+6        ; First service mode text column (chars)
+kLastRow    EQU  (kSvcHeight-50)+kFirstRow   ; Last svc. mode text row (pixels)
 
                                      ; Screen offsets for "splash" icon displays
 kIcn1Offset EQU  (((kFirstRow+30)*kRowBytes)+kFirstCol+52)  ; Must be even!
@@ -75,6 +76,7 @@ kIcn2Offset EQU  (((kFirstRow+70)*kRowBytes)+kFirstCol+52)  ; Must be even!
 kKeyId      EQU  $01B2               ; Keyboard identifier byte
 kRomVWord   EQU  $00FE3FFC           ; ROM version word
 kScreen     EQU  $0110               ; ROM-set pointer to bottom of video memory
+kStdStatus  EQU  $01B4               ; ROM-alloc'd space for 4-byte disk status
 
     ; Device addresses
 kDiskMem    EQU  $00FCC001           ; Shared disk controller memory
@@ -101,12 +103,14 @@ kCrsrHide   EQU  $00FE2FEA           ; Hide the mouse cursor
 kDispIcon   EQU  $00FE35E2           ; Display a compressed icon from the ROM
 kDispMnuBox EQU  $00FE27D0           ; Display a menu box
 kDispMsg    EQU  $00FE3700           ; Print a message
+kDispVal    EQU  $00FE373A           ; Print a single character
 kEjectDisk  EQU  $00FE1E56           ; Eject floppy disk
 kGetError   EQU  $00FE26E6           ; kGetInput error bailout routine
 kGetInput   EQU  $00FE2C46           ; Get keyboard/mouse input
 kMakeMenu   EQU  $00FE336A           ; Make a drop-down menu
 kMakeWindow EQU  $00FE31C6           ; Make a window
 kPaintBox   EQU  $00FE3128           ; Draw a rectangle tiled with a word
+kScroll     EQU  $00FE2B08           ; Scroll service mode text up one line
 
 kIconLisa   EQU  $00FE3D54           ; Apple Lisa icon (compressed)
 kIconUpper  EQU  $00FE3ADA           ; "Upper" drive icon (compressed)

@@ -63,7 +63,7 @@ mFail       MACRO
     ;   If any of your arguments are in D4-D6, it is advisable to permute them
     ;       such that \1 is D5, \2 is D6, and \3 is D4.
 mPrtMem     MACRO
-      MOVEM.L D0/D4-D6,-(A7)         ; Save register contents
+      MOVEM.L D4-D6/A6,-(A7)         ; Save register contents
               IFNC '\1','D5'
       MOVE.W \1,D5                   ; First line row (pixels)
               ENDC
@@ -85,7 +85,55 @@ mPrtMem     MACRO
               IFNC '\5','A3'
       MOVEM.L (A7)+,A3               ; Restore A3 contents
               ENDC
-      MOVEM.L (A7)+,D0/D4-D6         ; Restore register contents
+      MOVEM.L (A7)+,D4-D6/A6         ; Restore register contents
+            ENDM
+
+    ; mPrtBts -- Print a string in memory, substituting bits where directed
+    ; Args:
+    ;   \1: pixel row of the string's first line
+    ;   \2: character column of the first line's first character
+    ;   \3: character column of the next lines' first characters
+    ;   \4: "position export" keyword (see below)
+    ;   \5: memory address of the string to print
+    ;   \6: source of bits to substitute into the string
+    ; Notes:
+    ;   Works the same as mPrtMem, but whenever an ASCII character in the range
+    ;       '_'..'~' is encountered, the bit value of bit 0..31 (respectively)
+    ;       of D1 is substituted in place of the character (as '0' or '1').
+    ;   String can be multi-line, with lines split by carriage return ($0D).
+    ;   If the "position export" keyword is equal to "export" (no quotes), the
+    ;       row and column positions where a hypothetical character after the
+    ;       last character in 5 would have been printed are copied back to
+    ;       \1 and \2. Will not work correctly if \1 or \2 are in D4-D6.
+    ;   If any of your arguments are in D4-D6, it is advisable to permute them
+    ;       such that \1 is D5, \2 is D6, and \3 is D4.
+mPrtBts     MACRO
+      MOVEM.L D3-D6/A6,-(A7)         ; Save register contents
+              IFNC '\1','D5'
+      MOVE.W \1,D5                   ; First line row (pixels)
+              ENDC
+              IFNC '\2','D6'
+      MOVE.W \2,D6                   ; First line first column (chars/bytes)
+              ENDC
+              IFNC '\3','D4'
+      MOVE.W \3,D4                   ; Next line first column (chars/bytes)
+              ENDC
+              IFNC '\5','A3'
+      MOVEM.L A3,-(A7)               ; Save A3 contents
+      MOVEA.L \5,A3                  ; Memory address of string to print
+              ENDC
+              IFNC '\6','D3'
+      MOVE.L \6,D3                   ; Source of bits to substitute into string
+              ENDC
+      BSR     BSUBDISPMSG            ; Print the message
+              IFC '\4','export'
+      MOVE.W D5,\1                   ; Export new first line row if desired
+      MOVE.W D6,\2                   ; Export new first line column if desired
+              ENDC
+              IFNC '\5','A3'
+      MOVEM.L (A7)+,A3               ; Restore A3 contents
+              ENDC
+      MOVEM.L (A7)+,D3-D6/A6         ; Restore register contents
             ENDM
 
     ; mPrtLit -- Print a string literal to the display
@@ -103,7 +151,6 @@ mPrtLit     MACRO
       DS.W    0                      ; Force even word alignment
 .p\@  mPrtMem \1,\2,\3,\4,#.s\@      ; Print string constant
             ENDM
-
 
     ; mPrtHxB -- Print a hexadecimal representation of a byte to the display
     ; Args:

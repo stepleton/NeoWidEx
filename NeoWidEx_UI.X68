@@ -157,6 +157,40 @@ MENUCOUNT:
     MOVEM.L (A7)+,D0-D2/A3           ; Restore saved registers
     RTS                              ; Back to caller
 
+    ; BSUBDISPMSG -- Print a string, substituting bits from D1 where directed
+    ; Args:
+    ;   A3: memory address of string to print
+    ;   D3: source of bits to substitute into the string specified by A3
+    ;   D4: character column of the next lines' first characters
+    ;   D5: pixel row of the string's first line
+    ;   D5: character column of the first line's first character
+    ; Notes:
+    ;   Works the same as DSPMSG, but whenever an ASCII character in the range
+    ;       '_'..'~' is encountered, the bit value of bit 0..31 (respectively)
+    ;       of D1 is substituted in place of the character (as '0' or '1').
+    ;   May trash A6 if scrolling is required (just like DSPMSG).
+    ;   String can be multi-line, with lines split by carriage return ($0D).
+BSUBDISPMSG:
+    MOVE.L  D0,-(A7)                 ; Save D0 contents to stack
+.lp CMPI.W  #kLastRow,D5             ; Check if cursor has gone below page
+    BLE.S   .ns                      ; Skip ahead if not
+    JSR     kScroll                  ; If so, scroll up a page
+.ns CLR.L   D0                       ; Clear scratch space
+    MOVE.B  (A3)+,D0                 ; Get next char to display
+    BEQ.S   .rt                      ; Exit on null terminator
+    CMPI.B  #'_',D0                  ; See if we need to substitute a bit here
+    BLO.S   .dv                      ; No, skip ahead to print it
+    SUBI.B  #'_',D0                  ; Change character to a bit index
+    BTST.L  D0,D3                    ; See if the D3 bit at the index is set
+    BNE.S   .p1                      ; It is, skip ahead to print a 1
+    MOVE.B  #'0',D0                  ; It wasn't, here is the 0 we will print
+    BRA.S   .dv                      ; Skip ahead to print that 0
+.p1 MOVE.B  #'1',D0                  ; Here is the 1 we will print
+.dv JSR     kDispVal                 ; Print the character
+    BRA.S   .lp                      ; Loop to print the next character
+.rt MOVE.L  (A7)+,D0                 ; Restore D0 contents
+    RTS
+
     ; HEXB2STR -- Convert D1 byte to a null-terminated hex string at zNumToStr
     ; Args:
     ;   D1: byte to turn into an ASCII hex string

@@ -187,7 +187,7 @@ WINFOPRINT:
     MOVE.B  zFmtIntrl,-(A7)
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  INTERLEAVE FACTOR-'>,hhx,endl
 
-    ; Print number of spares in use
+    ; Print number of spares in use.
 .s0 TST.B   zSparesInUse             ; Are any spares in use?
     BNE.S   .s1                      ; Yes, skip ahead to say how many
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO SPARES IN USE'>,endl
@@ -195,7 +195,7 @@ WINFOPRINT:
 .s1 MOVE.B  zSparesInUse,-(A7)       ; Drive spares-in-use count onto stack
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARES IN USE-'>,hhx,endl
 
-    ; Print number of bad blocks
+    ; Print number of bad blocks.
 .b0 TST.B   zBadBlocks               ; Are there any bad blocks?
     BNE.S   .b1                      ; Yes, skip ahead to say how many
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO BAD BLOCKS'>,endl
@@ -205,6 +205,29 @@ WINFOPRINT:
 
 .rt RTS                              ; Back to the caller
 
+    ; STATUSPRINT -- Print standard status bytes from last drive I/O op
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   (none)
+STATUSPRINT:
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- LAST STANDARD STATUS ---'>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'                          '>
+    MOVE.B  (kStdStatus+3),-(A7)     ; Fourth status byte to stack for printing
+    MOVE.B  (kStdStatus+2),-(A7)     ; Third status byte
+    MOVE.B  (kStdStatus+1),-(A7)     ; Second status byte
+    MOVE.B  (kStdStatus+0),-(A7)     ; First status byte; now print them all
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,<' '>,hhx,<' '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,<' '>,hhx,endl
+    ; Print the status bitmap with explanatory text.
+    mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sStatusBitmap,kStdStatus
+    MOVE.L  D0,-(A7)                 ; Save D0 so we can use it temporarily
+    MOVE.B  (kStdStatus+3),D0        ; Fourth status byte to D0
+    ANDI.B  #$0F,D0                  ; Preserve only the failed retry count
+    MOVE.B  D0,-(A7)                 ; Onto the stack for printing
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,endl  ; Print failed retry count
+    MOVE.L  (A7)+,D0                 ; Restore D0
+    RTS                              ; Back to the caller
 
     ; SPAREPRINT -- Read and print the spare table
     ; Args:
@@ -229,7 +252,10 @@ _SPAREPRINTPR:
     MOVEA.L #(zSectorTag+$1A),A0     ; Spare table is 26 bytes in
 
     ; Print table of spared blocks.
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARE TABLE--'>,endl
+    TST.B   zSparesInUse
+    BNE.S   .s0
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO '>
+.s0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BLOCKS SPARED'>,endl
     CLR.W   D0                       ; Blank D0 word for DBEQ below
     MOVE.B  zSparesInUse,D0          ; Spare count into D0
     BEQ     .s3                      ; No spares? Skip to consume terminator
@@ -254,7 +280,10 @@ _SPAREPRINTPR:
 .s4 ADDQ.L  #3,A0                    ; Advance to the bad block table
 
     ; Print table of bad blocks.
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCK TABLE--'>,endl
+    TST.B   zBadBlocks
+    BNE.S   .b0
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO '>
+.b0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCKS'>,endl
     CLR.W   D0                       ; Blank D0 word for DBEQ below
     MOVE.B  zBadBlocks,D0            ; Bad block count into D0
     BEQ     .b3                      ; No bad blocks? Skip to consume terminator
@@ -524,6 +553,20 @@ sSigFallback:
     DC.B    0                        ; Whatever it is, it's not Widgety
     DC.B    'UNKNOWN DRIVE TYPE',0
 
+sStatusBitmap:
+    DC.B    '                -BYTE 0-                         -BYTE 1-',$0D
+    DC.B    ' NON-55 RESPONSE FROM HOST-~           SPARE TABLE OVERFLOW-u',$0D
+    DC.B    '     WRITE BUFFER OVERFLOW-}    5 OR FEWER SPARES AVAILABLE-t',$0D
+    DC.B    '                READ ERROR-z   CONTROLLER SELF-TEST FAILURE-r',$0D
+    DC.B    '  NO MATCHING HEADER FOUND-y       SPARE TABLE JUST UPDATED-q',$0D
+    DC.B    ' UNRECOVERABLE SERVO ERROR-x   SEEK TO WRONG TRACK OCCURRED-p',$0D
+    DC.B    '     LAST OPERATION FAILED-w     CONTROLLER ABORTED LAST OP-o',$0D
+    DC.B    $0D
+    DC.B    '                -BYTE 2-                         -BYTE 3-',$0D
+    DC.B    '   JUST DID POWER-ON RESET-n    ECC CIRCUIT SAYS READ ERROR-f',$0D
+    DC.B    '   LAST BLOCK OUT OF RANGE-m    CRC CIRCUIT SAYS READ ERROR-e',$0D
+    DC.B    '                                HEADER TIMEOUT ON LAST READ-d',$0D
+    DC.B    '                                   UNSUCCESSFUL RETRY COUNT-',0
 
 ** (Back to the code section) **
     SECTION kSecCode

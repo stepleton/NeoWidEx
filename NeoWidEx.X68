@@ -64,31 +64,37 @@ UILOOP:
     LEA     sMainMenu,A3             ; Point A3 to main menu strings
     JSR     MENU                     ; Draw menu and get the user's choice
 
-    CMPI.B  #kKeyCode1,D0            ; Does the user want info about the Widget?
-    BEQ.S   .m1                      ; Yes, jump to the Widget info-getting code
-    CMPI.B  #kKeyCode2,D0            ; Does the user want the spare table?
-    BEQ.S   .m2                      ; Yes, jump to spare table printing code
-    CMPI.B  #kKeyCode3,D0            ; Does the user want to see the thanks?
-    BEQ.S   .m3                      ; Yes, jump to the thanks code
-    CMPI.B  #kKeyCode4,D0            ; Does the user want to quit?
-    BEQ.S   .m4                      ; Yes, jump to quitting code
+    CMPI.B  #kKeyCode1,D0            ; Does the user want the last cmd. status?
+    BEQ.S   .m1                      ; Yes, jump to the status printing code
+    CMPI.B  #kKeyCode2,D0            ; Does the user want info about the Widget?
+    BEQ.S   .m2                      ; Yes, jump to the Widget info-getting code
+    CMPI.B  #kKeyCode3,D0            ; Does the user want the spare table?
+    BEQ.S   .m3                      ; Yes, jump to spare table printing code
+    CMPI.B  #kKeyCode4,D0            ; Does the user want to see the thanks?
+    BEQ.S   .m4                      ; Yes, jump to the thanks code
+    CMPI.B  #kKeyCode5,D0            ; Does the user want to quit?
+    BEQ.S   .m5                      ; Yes, jump to quitting code
 
     BRA.S   UILOOP                   ; Get next user command
 
-    ; Main loop option 1: Get Widget info.
-.m1 BSR     WINFOPRINT
+    ; Main loop option 1: Show the status bytes from the last command
+.m1 BSR     STATUSPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 2: Print spare table.
-.m2 BSR     SPAREPRINT
+    ; Main loop option 2: Get Widget info.
+.m2 BSR     WINFOPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 3: Show thanks.
-.m3 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    ; Main loop option 3: Print spare table.
+.m3 BSR     SPAREPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 4: Quit and return to the ROM.
-.m4 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    ; Main loop option 4: Show thanks.
+.m4 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    BRA.S   UILOOP
+
+    ; Main loop option 5: Quit and return to the ROM.
+.m5 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
 
@@ -121,10 +127,11 @@ zReturnCode:
 
 sMainMenu:
     DC.B    'COMMANDS',0             ; Menu title
-    DC.B    'DRIVE INFO    1',0
-    DC.B    'SPARE TABLE   2',0
-    DC.B    'THANKS        3',0
-    DC.B    'QUIT          4',0
+    DC.B    'LAST STATUS   1',0
+    DC.B    'DRIVE INFO    2',0
+    DC.B    'SPARE TABLE   3',0
+    DC.B    'THANKS        4',0
+    DC.B    'QUIT          5',0
     DC.B    0                        ; End of menu.
 
 
