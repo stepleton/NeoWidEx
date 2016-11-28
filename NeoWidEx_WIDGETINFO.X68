@@ -293,7 +293,7 @@ _SPAREPRINTPR:
     SUBQ.B  #1,D0                    ; Subtract 1 to make it a loop iterator
 .b1 m_cp3b  A0,D1                    ; Next bad block into D1...
     MOVE.L  D1,-(A7)                 ; ...and onto the stack
-    CMPI.W  #(kFirstCol+57),kCrtCol  ; Do we need a CR?
+    CMPI.W  #(kFirstCol+56),kCrtCol  ; Do we need a CR?
     BLO.S   .b2                      ; No, print the entry
     mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a CR first
 .b2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,3x  ; Print space and entry
