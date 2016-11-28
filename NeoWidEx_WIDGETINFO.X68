@@ -185,7 +185,7 @@ WINFOPRINT:
     MOVE.B  zFmtOffset,-(A7)         ; Drive format offset onto stack
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'FORMAT OFFSET-'>,hhx
     MOVE.B  zFmtIntrl,-(A7)
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  INTERLEAVE FACTOR-'>,hhx,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  INTERLEAVE-'>,hhx,endl
 
     ; Print number of spares in use.
 .s0 TST.B   zSparesInUse             ; Are any spares in use?
@@ -234,14 +234,17 @@ STATUSPRINT:
     ;   (none)
     ; Notes:
     ;   Runs WIDGETINFO if it hasn't been run yet, and in that case, has all
-    ;       of WIDGETINFO's side effects.
+    ;       of WIDGETINFO's side effects. If WIDGETINFO has been run, then
+    ;       only D0-D2/A0-A1 will be trashed.
 SPAREPRINT:
     BSR     WINFOMAYBE               ; Run WIDGETINFO if needed
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SPARE TABLE ---'>,endl
+    mResetP                          ; Reset paging (only needed for Widget)
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SPARE TABLE ---'>,pendl
     TST.B   zIsWidgety               ; Is this a Widget or a ProFile?
     BEQ.S   _SPAREPRINTPR            ; It's a ProFile; jump to specialised code
     BRA     _SPAREPRINTWI            ; It's a Widget; jump to specialised code
 
+    ; SPAREPRINT branch for printing ProFile spare tables
 _SPAREPRINTPR:
     ; Load the ProFile's spare table.
     MOVE.L  #$00FFFFFF,D1            ; Sector ID for the ProFile spare table
@@ -256,7 +259,7 @@ _SPAREPRINTPR:
     BNE.S   .s0
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO '>
 .s0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BLOCKS SPARED'>,endl
-    CLR.W   D0                       ; Blank D0 word for DBEQ below
+    CLR.W   D0                       ; Blank D0 word for DBRA below
     MOVE.B  zSparesInUse,D0          ; Spare count into D0
     BEQ     .s3                      ; No spares? Skip to consume terminator
     SUBQ.B  #1,D0                    ; Subtract 1 to make D0 a loop iterator
@@ -267,7 +270,7 @@ _SPAREPRINTPR:
     mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a CR first
 .s2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,3x  ; Print space and entry
     ADDQ.L  #3,A0                    ; On to the next spare table entry
-    DBEQ    D0,.s1                   ; Iterate till done with spares
+    DBRA    D0,.s1                   ; Iterate till done with spares
     mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Follow table print with a CR
 
     ; Check that the spare table ends with an $FFFFFF entry.
@@ -284,18 +287,18 @@ _SPAREPRINTPR:
     BNE.S   .b0
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO '>
 .b0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCKS'>,endl
-    CLR.W   D0                       ; Blank D0 word for DBEQ below
+    CLR.W   D0                       ; Blank D0 word for DBRA below
     MOVE.B  zBadBlocks,D0            ; Bad block count into D0
     BEQ     .b3                      ; No bad blocks? Skip to consume terminator
     SUBQ.B  #1,D0                    ; Subtract 1 to make it a loop iterator
 .b1 m_cp3b  A0,D1                    ; Next bad block into D1...
     MOVE.L  D1,-(A7)                 ; ...and onto the stack
-    CMPI.W  #(kFirstCol+56),kCrtCol  ; Do we need a CR?
+    CMPI.W  #(kFirstCol+57),kCrtCol  ; Do we need a CR?
     BLO.S   .b2                      ; No, print the entry
     mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a CR first
 .b2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,3x  ; Print space and entry
     ADDQ.L  #3,A0                    ; On to the next bad block table entry
-    DBEQ    D0,.b1                   ; Iterate till done with bad blocks
+    DBRA    D0,.b1                   ; Iterate till done with bad blocks
     mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Follow table print with a CR
 
     ; Check that the bad block tabel ends with an $FFFFFF entry.
@@ -308,13 +311,154 @@ _SPAREPRINTPR:
 
 .rt RTS                              ; Back to SPAREPRINT's caller
 
+    ; SPAREPRINT branch for printing Widget spare tables (in detail)
 _SPAREPRINTWI:
     ; Load the Widget's spare table.
     MOVE.L  #$00FFFFFE,D1            ; Sector ID for the Widget spare table
     BSR     SECTOR                   ; Read the spare table
     BCS     .rt                      ; Jump to return on error
 
-.rt RTS                              ; Back to SPAREPRINT's caller
+    MOVEA.L #(zSectorTag+$4),A0      ; Address for spare table revision to A0
+    MOVE.L  (A0)+,-(A7)              ; And copied to stack for printing
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'THIS SPARE TABLE HAS BEEN REVISED '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,lx,<' TIMES'>,pendl
+
+    ; Print format and spare stats that we also saw in $FFFFFF.
+    MOVE.B  zFmtOffset,D1            ; $FFFFFF format offset for comparison...
+    MOVE.B  (A0)+,D0                 ; ...with this block's reported offset...
+    MOVE.B  D0,-(A7)                 ; ...which also goes on the stack to print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'FORMAT OFFSET-'>,hhx
+    BSR     .cm                      ; Compare and complain if they differ
+
+    MOVE.B  zFmtIntrl,D1             ; $FFFFFF interleave for comparison...
+    MOVE.B  (A0)+,D0                 ; ...with this block's reported value...
+    MOVE.B  D0,-(A7)                 ; ...which also goes on the stack to print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  INTERLEAVE-'>,hhx
+    BSR     .cm                      ; Compare and complain if they differ
+
+    ADDA.L  #128,A0                  ; Skip past the head pointer array
+
+    MOVE.B  zSparesInUse,D1          ; $FFFFFF spares in use for comparison...
+    MOVE.B  (A0)+,D0                 ; ...with this block's reported value...
+    MOVE.B  D0,-(A7)                 ; ...which also goes on the stack to print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  SPARES-'>,hhx
+    BSR     .cm                      ; Compare and complain if they differ
+
+    MOVE.B  zBadBlocks,D1            ; $FFFFFF bad blocks for comparison...
+    MOVE.B  (A0)+,D0                 ; ...with this block's reported value...
+    MOVE.B  D0,-(A7)                 ; ...which also goes on the stack to print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  BAD BLOCKS-'>,hhx
+    BSR     .cm                      ; Compare and complain if they differ
+
+    ; Print the bitmap of allocated spare blocks.
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,pendl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BITMAP OF ALLOCATED SPARES'>,pendl
+    ; We just keep pulling in longs and printing out their bits using the
+    ; mPrtBts templates defined in the string section. The last two bytes of
+    ; the last long stray into the heap, but we don't use those.
+    mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sSpareBitmap1,(A0)+
+    mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sSpareBitmap2,(A0)+
+    mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sSpareBitmap3,(A0)+
+    SUBQ.B  #2,zLineCount            ; Inform the pager about two newlines
+
+    ; Print allocated entries in the spare table.
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARES ALLOCATED'>,pendl
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sSpareHeadings
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,pendl
+    MOVEA.L #(zSectorTag+$A),A0      ; A0 to start of the head pointer array
+    MOVEA.L #(zSectorTag+$96),A1     ; A1 to start of the heap
+    CLR.W   D0                       ; D0: loop over 1024-block chunk indices
+
+.s0 MOVE.B  0(A0,D0.W),D1            ;   Head ptr for 1st 1024-block chunk to D1
+    BCLR.L  #7,D1                    ;   Is there a spare here? +(Clear 8th bit)
+    BNE     .s7                      ;   No, advance to the next chunk
+
+.s1 CLR.W   D2                       ;     Clear D2 word in anticipation of...
+    MOVE.B  D1,D2                    ;     ...copy from D1 and multiply by 4...
+    LSL.W   #2,D2                    ;     ...making it an index into the "heap"
+
+    MOVE.B  D1,-(A7)                 ;     Print spare block number
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'   '>,hhx
+
+    CLR.L   D1                       ;     To print LBA, start with empty D1
+    MOVE.B  1(A1,D2.W),D1            ;     LBA bits 9..8 to D1 bits 1..0
+    ROR.W   #2,D1                    ;     Rotate bits 9..8 to D1 bits 14..15
+    MOVE.B  D0,D1                    ;     LBA bits 16..10 to D1 bits 6..0
+    ROL.W   #2,D1                    ;     LBA bits 16..8 to D1 bits 8..0
+    LSL.L   #8,D1                    ;     LBA bits 16..8 to D1 bits 16..8
+    MOVE.B  2(A1,D2.W),D1            ;     LBA bits 7..0 to D1 bits 7..0
+    MOVE.L  D1,-(A7)                 ;     Onto stack for printing, and print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' . '>,3x
+
+    BTST.B  #6,0(A1,D2.W)            ;     Is this spare block marked as used?
+    BSR     .yn                      ;     Print yes or no
+    BTST.B  #5,0(A1,D2.W)            ;     Is this spare block marked as usable?
+    BSR     .yn                      ;     Print yes or no
+
+    BTST.B  #4,0(A1,D2.W)            ;     What type of spare is this?
+    BEQ.S   .s2                      ;     Skip ahead if a bad block
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' . SPARE     '>
+    BRA.S   .s3                      ;     Skip ahead to data type
+.s2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' . BAD BLOCK '>
+
+.s3 BTST.B  #3,0(A1,D2.W)            ;     Does the block hold spare table data?
+    BEQ.S   .s4                      ;     No, skip ahead
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' . SPARE TABLE'>
+    BRA     .s6                      ;     Done with table entry, print newline
+.s4 BTST.B  #1,0(A1,D2.W)            ;     Does the block hold user data?
+    BEQ.S   .s5                      ;     No, skip ahead
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' . USER DATA'>
+    BRA.S   .s6                      ;     Done with table entry, print newline
+.s5 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' . UNKNOWN'>
+.s6 mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl
+
+    MOVE.B  3(A1,D2.W),D1            ;     Next spare record pointer to D1
+    BCLR.L  #7,D1                    ;     Spare here? +(Clear 8th bit)
+    BEQ     .s1                      ;     Yes, repeat inner loop
+
+.s7 ADDQ.W  #1,D0                    ;   On to the next 1024-block chunk
+    CMPI.W  #128,D0                  ;   Have we seen them all?
+    BLO     .s0                      ;   No, on to the next
+
+    ; Print raw head pointer array data
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW HEAD POINTER ARRAY'>,qpendl
+    mDump.B kCrtRow,kCrtCol,#kFirstCol,A0,zSpares,qpendl
+
+    ; Print raw spare table data.
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SPARE TABLE DATA'>,qpendl
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,zSpares,qpendl
+
+    ; Print interleave map
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'INTERLEAVE MAP'>,qpendl
+    mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,zSectors,qpendl
+
+    ; Print overall checksum for this sector
+    MOVE.B  (A1)+,D0                 ; MSB of checksum into D0
+    LSL.W   #8,D0                    ; Shift it to the MSB location
+    MOVE.B  (A1)+,D0                 ; LSB of checksum into place
+    MOVE.W  D0,-(A7)                 ; Checksum onto stack for printing
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'ENTIRE RECORD CHECKSUM-'>,hx,endl
+
+.rt RTS                              ; Return to caller
+
+    ; Tiny subroutine that _SPAREPRINTWI uses to print YES or NO in the spare
+    ; table readout for various flags.
+.yn BEQ.S   .no
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' .   YES  '>
+    RTS                              ; Return to caller
+.no mPrint  kCrtRow,kCrtCol,#kFirstCol,<' .   NO   '>
+    RTS                              ; Return to caller
+
+    ; Tiny subroutine that allows _SPAREPRINTWI to compare drive parameters
+    ; from sector $FFFFFE (the spare table) with their counterparts from
+    ; sector $FFFFFF (loaded by WIDGETINFO).
+.cm CMP.B   D0,D1
+    BEQ     .rc
+    MOVE.B  D1,-(A7)
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'?'>,pendl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'...SECTOR FFFFFF SAID IT WAS '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,pendl
+.rc RTS                              ; Back to caller (i.e. _SPAREPRINTWI)
 
 
     PAGE
@@ -567,6 +711,16 @@ sStatusBitmap:
     DC.B    '   LAST BLOCK OUT OF RANGE-m    CRC CIRCUIT SAYS READ ERROR-e',$0D
     DC.B    '                                HEADER TIMEOUT ON LAST READ-d',$0D
     DC.B    '                                   UNSUCCESSFUL RETRY COUNT-',0
+
+sSpareBitmap1:
+    DC.B    '   ~}|{zyxw vutsrqpo nmlkjihg fedcba`_',0
+sSpareBitmap2:
+    DC.B    ' ~}|{zyxw vutsrqpo',$0D,'   nmlkjihg fedcba`_',0
+sSpareBitmap3:
+    DC.B    ' ~}|{zyxw vutsrqpo',$0D,0
+sSpareHeadings:
+    DC.B    '  NUM .  LBA   . IN USE  . USEABLE . SPARE TYPE . CONTENTS',0
+
 
 ** (Back to the code section) **
     SECTION kSecCode

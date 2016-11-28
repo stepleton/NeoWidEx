@@ -57,7 +57,7 @@ kDboxLeft   EQU  kMenuWidth+2
 kDboxTop    EQU  4*kRowBytes
 kDboxStart  EQU  kMenuStart+kDboxLeft+kDboxTop
 
-kSvcHeight  EQU  320                 ; Service mode window height in lines
+kSvcHeight  EQU  320                 ; Service mode window height in pixels
 kSvcTop     EQU  (kDboxHeight+2)*kRowBytes
 kSvcStart   EQU  kDboxStart+kSvcTop
 kSvcWidth   EQU  84-kMenuWidth       ; Service mode window width in chars/bytes
@@ -65,6 +65,8 @@ kSvcWidth   EQU  84-kMenuWidth       ; Service mode window width in chars/bytes
 kFirstRow   EQU  (kSvcStart/90)+20   ; First service mode text row (pixels)
 kFirstCol   EQU  kMenuWidth+6        ; First service mode text column (chars)
 kLastRow    EQU  (kSvcHeight-50)+kFirstRow   ; Last svc. mode text row (pixels)
+
+kPagerLines EQU  ((kLastRow-kFirstRow)/10)-1   ; Lines to show before --MORE--
 
                                      ; Screen offsets for "splash" icon displays
 kIcn1Offset EQU  (((kFirstRow+30)*kRowBytes)+kFirstCol+52)  ; Must be even!
@@ -111,6 +113,7 @@ kMakeMenu   EQU  $00FE336A           ; Make a drop-down menu
 kMakeWindow EQU  $00FE31C6           ; Make a window
 kPaintBox   EQU  $00FE3128           ; Draw a rectangle tiled with a word
 kScroll     EQU  $00FE2B08           ; Scroll service mode text up one line
+kWait4Input EQU  $00FE2D38           ; Wait for input from kbd/mouse COPS
 
 kIconLisa   EQU  $00FE3D54           ; Apple Lisa icon (compressed)
 kIconUpper  EQU  $00FE3ADA           ; "Upper" drive icon (compressed)

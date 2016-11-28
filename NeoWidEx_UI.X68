@@ -191,6 +191,73 @@ BSUBDISPMSG:
 .rt MOVE.L  (A7)+,D0                 ; Restore D0 contents
     RTS
 
+    ; PAGEDNEWLINE -- move to next line, paging the display if necessary
+    ; Args:
+    ;   D4: character column of the next line's first character
+    ;   D5: pixel row of the string's first line (will be updated)
+    ;   D6: current character column
+    ; Notes:
+    ;   When called kPagerLines times, will print "--MORE--" on the new line and
+    ;       await a keypress from the user. After the keypress, the "--MORE--"
+    ;       is deleted.
+    ;   The "countdown" to the paging event can be changed by altering the value
+    ;       in the zLineCount byte.
+    ;   If the user presses the 'Return' key, paging will go line-by-line. If
+    ;       the user presses any other key, paging will go screen-by-screen.
+    ;   If the user presses 'q' during a paging event, the byte at zStopPaging
+    ;       will be nonzero; otherwise it will be set to 0. The PAGEDRTS
+    ;       "subroutine" may be of use in dealing with this.
+    ;   The ROM's kDispMsg routine will not scroll the Service Mode window
+    ;       immediately if the new current row is out-of-bounds. Scrolling only
+    ;       occurs when a character is printed on an out-of-bounds row.
+    ;       Additionally and for this reason, two invocations in sequence will
+    ;       not yield a blank line if the screen is already full---but the
+    ;       paging behaviour carries on as if it did anyway. To force a blank
+    ;       line, the most effective way is maybe to call this subroutine and
+    ;       then `mPrtLit kCrtRow,kCrtCol,#kFirstCol,no_export,<' '>`.
+PAGEDNEWLINE:
+    MOVEM.L D0/A3,-(A7)              ; Save registers we might use
+    ADDI.W  #kCharHeight,D5          ; Advance row to the next line
+    MOVE.W  D4,D6                    ; Reset column to the left margin
+    CLR.B   zStopPaging              ; Clear "user pressed q" byte
+    SUBQ.B  #1,zLineCount            ; Decrement lines left until time to pause
+    BHI.S   .rt                      ; Still have some? Skip ahead to return
+    MOVEA.L #.s0,A3                  ; Point A3 at "Press any key" string...
+    JSR     kDispMsg                 ; ...and print it...
+    MOVE.W  D4,D6                    ; Reset column to the left margin
+.lp JSR     kWait4Input              ;   Get an event from the COPS
+    TST.B   D0                       ;   Was it a keyboard event?
+    BPL.S   .lp                      ;   No, wait again
+    MOVEA.L #.s1,A3                  ; Point A3 at blanking string...
+    JSR     kDispMsg                 ; ...and print it
+    MOVE.W  D4,D6                    ; Reset column to the left margin
+    CMPI.B  #$F5,D0                  ; Did the user press the 'Q' key?
+    SEQ.B   zStopPaging              ; Mark in memory if so
+    MOVE.B  #kPagerLines,zLineCount  ; Reset lines left
+    CMPI.B  #$C8,D0                  ; But wait, did the user press Return?
+    BNE.S   .rt                      ; No, nevermind, go a full screen at a time
+    MOVE.B  #1,zLineCount            ; Yes! So only advance one line
+.rt MOVEM.L (A7)+,D0/A3              ; Restore saved registers
+    RTS                              ; Back to caller
+.s0 DC.B    '--MORE--',0             ; "Any key to continue" string
+.s1 DC.B    '        ',0             ; String to blank out the above
+
+    ; PAGEDRTS -- Return to caller's caller if user pressed 'q' while paging
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Checks the value stored at zStopPaging; if nonzero, the return address
+    ;       for the call to PAGEDRTS is dropped from the stack and RTS is
+    ;       executed, returning to the caller's caller.
+    ;   Will NOT work if the subroutine that called PAGEDRTS placed ANYTHING
+    ;       on the stack prior to the BSR or JSR to PAGEDRTS.
+PAGEDRTS:
+    TST.B   zStopPaging              ; Did the user once press 'q' while paging?
+    BEQ.S   .rt                      ; No, skip ahead to return
+    ADDQ.L  #4,A7                    ; Yes, drop caller's return address
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'...STOPPED...'>,endl
+.rt RTS                              ; Back to caller or caller's caller...
+
     ; HEXB2STR -- Convert D1 byte to a null-terminated hex string at zNumToStr
     ; Args:
     ;   D1: byte to turn into an ASCII hex string
@@ -288,6 +355,12 @@ dMenuIds:
 
 zNumToStr:
     DCB.B   16,'n'                   ; 16 bytes for turning numbers to strings
+zLineCount:
+    DC.B    kPagerLines              ; PAGEDNEWLINE calls till scrolling pauses
+zStopPaging:
+    DC.B    0                        ; If the user hit 'q' to abort the pager
+
+    DS.W    0                        ; Force even alignment for following data
 
 
 * NeoWidEx UI strings =======================================

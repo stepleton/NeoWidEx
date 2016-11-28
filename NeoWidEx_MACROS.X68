@@ -65,13 +65,13 @@ mFail       MACRO
 mPrtMem     MACRO
       MOVEM.L D4-D6/A6,-(A7)         ; Save register contents
               IFNC '\1','D5'
-      MOVE.W \1,D5                   ; First line row (pixels)
+      MOVE.W  \1,D5                  ; First line row (pixels)
               ENDC
               IFNC '\2','D6'
-      MOVE.W \2,D6                   ; First line first column (chars/bytes)
+      MOVE.W  \2,D6                  ; First line first column (chars/bytes)
               ENDC
               IFNC '\3','D4'
-      MOVE.W \3,D4                   ; Next line first column (chars/bytes)
+      MOVE.W  \3,D4                  ; Next line first column (chars/bytes)
               ENDC
               IFNC '\5','A3'
       MOVEM.L A3,-(A7)               ; Save A3 contents
@@ -79,8 +79,8 @@ mPrtMem     MACRO
               ENDC
       JSR     kDispMsg               ; Print the message
               IFC '\4','export'
-      MOVE.W D5,\1                   ; Export new first line row if desired
-      MOVE.W D6,\2                   ; Export new first line column if desired
+      MOVE.W  D5,\1                  ; Export new first line row if desired
+      MOVE.W  D6,\2                  ; Export new first line column if desired
               ENDC
               IFNC '\5','A3'
       MOVEM.L (A7)+,A3               ; Restore A3 contents
@@ -110,25 +110,25 @@ mPrtMem     MACRO
 mPrtBts     MACRO
       MOVEM.L D3-D6/A6,-(A7)         ; Save register contents
               IFNC '\1','D5'
-      MOVE.W \1,D5                   ; First line row (pixels)
+      MOVE.W  \1,D5                  ; First line row (pixels)
               ENDC
               IFNC '\2','D6'
-      MOVE.W \2,D6                   ; First line first column (chars/bytes)
+      MOVE.W  \2,D6                  ; First line first column (chars/bytes)
               ENDC
               IFNC '\3','D4'
-      MOVE.W \3,D4                   ; Next line first column (chars/bytes)
+      MOVE.W  \3,D4                  ; Next line first column (chars/bytes)
               ENDC
               IFNC '\5','A3'
       MOVEM.L A3,-(A7)               ; Save A3 contents
       MOVEA.L \5,A3                  ; Memory address of string to print
               ENDC
               IFNC '\6','D3'
-      MOVE.L \6,D3                   ; Source of bits to substitute into string
+      MOVE.L  \6,D3                  ; Source of bits to substitute into string
               ENDC
       BSR     BSUBDISPMSG            ; Print the message
               IFC '\4','export'
-      MOVE.W D5,\1                   ; Export new first line row if desired
-      MOVE.W D6,\2                   ; Export new first line column if desired
+      MOVE.W  D5,\1                  ; Export new first line row if desired
+      MOVE.W  D6,\2                  ; Export new first line column if desired
               ENDC
               IFNC '\5','A3'
       MOVEM.L (A7)+,A3               ; Restore A3 contents
@@ -248,24 +248,69 @@ mPrtStr     MACRO
 
     ; mPrtCr -- "Print" a carriage return, i.e. move to the next line.
     ; Args:
-    ;   \1: where to store new pixel row of the string's first line
-    ;   \2: where to store character column of the next line's first character
+    ;   \1: where to get/(store new) pixel row of the string's first line
+    ;   \2: where to get/(store new) character column
     ;   \3: character column of the next line's first character
     ; Notes:
     ;   The "position export" keyword "export" (see mPrtMem notes) is implied.
     ;   The ROM's kDispMsg routine will not scroll the Service Mode window
     ;       immediately if the new current row is out-of-bounds. Scrolling only
     ;       occurs when a character is printed on an out-of-bounds row.
-    ;       Additionally and for this reason, two endls in sequence will not
-    ;       yield a blank line if the screen is already full. To force a blank
-    ;       line, print a $0D character instead.
+    ;       Additionally and for this reason, two invocations in sequence will
+    ;       not yield a blank line if the screen is already full. To force a
+    ;       blank line, print a $0D character instead.
 mPrtCr      MACRO
       ADDI.W  #kCharHeight,\1
       MOVE.W  \3,\2
             ENDM
 
+    ; mPrtCrP -- Like mPrtCr, but pauses after each full screen
+    ; Args:
+    ;   \1: where to get/(store new) pixel row of the string's first line
+    ;   \2: where to get/(store new) character column
+    ;   \3: character column of the next line's first character
+    ; Notes:
+    ;   Will NOT work correctly if \1 or \2 are in D4-D6.
+    ;   The "position export" keyword "export" (see mPrtMem notes) is implied.
+    ;   When called kPagerLines times, will print "--MORE--" on the new line and
+    ;       await a keypress from the user. After the keypress, the "--MORE--"
+    ;       is deleted.
+    ;   The ROM's kDispMsg routine will not scroll the Service Mode window
+    ;       immediately if the new current row is out-of-bounds. Scrolling only
+    ;       occurs when a character is printed on an out-of-bounds row.
+    ;       Additionally and for this reason, two invocations in sequence will
+    ;       not yield a blank line if the screen is already full---but the
+    ;       paging behaviour carries on as if it did anyway. To force a blank
+    ;       line, the most effective way is maybe to invoke this macro and then
+    ;       `mPrtLit kCrtRow,kCrtCol,#kFirstCol,no_export,<' '>`.
+    ;   The "countdown" to the paging event can be changed by altering the value
+    ;       in the zLineCount byte, or reset by invoking the `mResetP` macro.
+    ;   See the PAGEDNEWLINE subroutine for further information.
+mPrtCrP     MACRO
+      MOVEM.L D4-D6/A6,-(A7)         ; Save register contents
+      MOVE.W \1,D5                   ; First line row (pixels)
+      MOVE.W \2,D6                   ; First line first column (chars/bytes)
+              IFNC '\3','D4'
+      MOVE.W \3,D4                   ; Next line first column (chars/bytes)
+              ENDC
+      BSR.W   PAGEDNEWLINE           ; Invoke paging newline calculator
+      MOVE.W  D5,\1                  ; Copy new row to row storage
+      MOVE.W  D6,\2                  ; Copy new column to column storage
+      MOVEM.L (A7)+,D4-D6/A6         ; Restore register contents
+            ENDM
+
+    ; mResetP -- Reset the countdown to the pager event triggered by mPrtCrP
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Post-invocation, kPagerLines invocations of PAGEDNEWLINE (e.g. via
+    ;       mPrtCrP) will be necessary to trigger another paging event.
+mResetP     MACRO
+      MOVE.B  #kPagerLines,zLineCount  ; Reset lines remaining
+            ENDM
+
     ; mPrtX -- Print a variety of different things to the display
-    ; args:
+    ; Args:
     ;   \1: pixel row of the string's first line
     ;   \2: character column of the first line's first character
     ;   \3: character column of the next lines' first characters
@@ -276,18 +321,34 @@ mPrtCr      MACRO
     ;   \5 can be any of the following:
     ;       <'A literal string'> - print this string
     ;       endl - "carriage return": skip to the next line's first character
+    ;       pendl - like endl, but pauses for user keystroke on full screen
+    ;       qpendl - like pendl, but issues an RTS if the user types a 'q' at a
+    ;                pause---make sure there's nothing else on the stack!
     ;       hhx - pop a byte from the stack and print its hex representation
     ;       hx - pop a word from the stack and print its hex representation
     ;       3x - pop a long from the stack and print the hex representation of
     ;            its lower three bytes
     ;       lx - pop a long from the stack and print its hex representation
     ;       s - pop an address and print the null-terminated string there
-    ;   After an endl/"carriage return", no display scrolling will occur until
-    ;       a character is printed on the new line. Additionally and for this
-    ;       reason, two endls in sequence will not yield a blank line if the
-    ;       screen is already full. To force a blank line, print a $0D
-    ;       character instead.
+    ;   After an (p)endl/"carriage return", no display scrolling will occur
+    ;       until a character is printed on the new line. Additionally and for
+    ;       this reason, two endls in sequence will not yield a blank line if
+    ;       the screen is already full. To force a blank line, print a $0D
+    ;       character instead, or if paging, perhaps follow `pendl`s with
+    ;       `mPrtLit kCrtRow,kCrtCol,#kFirstCol,no_export,<' '>`.
+    ;   The "countdown" to the paging event that occurs after enough `pendl`s
+    ;       can be changed by altering the value in the zLineCount byte, or
+    ;       reset by invoking the `mResetP` macro.
+    ;   See the PAGEDNEWLINE subroutine for further information on `pendl`.
+    ;   See PAGEDNEWLINE and PAGEDRTS for further information on `qpendl`.
 mPrtX       MACRO
+              IFC <'\5'>,<'qpendl'>
+      mPrtCrP \1,\2,\3               ; Move to the next line, with paging
+      BSR     PAGEDRTS               ; Break out of current subroutine on 'q'
+              ENDC
+              IFC <'\5'>,<'pendl'>
+      mPrtCrP \1,\2,\3               ; Move to the next line, with paging
+              ENDC
               IFC <'\5'>,<'endl'>
       mPrtCr  \1,\2,\3               ; Move to the next line
               ENDC
@@ -306,7 +367,9 @@ mPrtX       MACRO
               IFC <'\5'>,<'s'>
       mPrtStr \1,\2,\3,\4            ; Print a string at an address on the stack
               ENDC
-              IFNC <'\5'>,<'endl'>   ; A proper else clause would be nice...
+              IFNC <'\5'>,<'qpendl'>
+              IFNC <'\5'>,<'pendl'>  ; A proper else clause would be nice...
+              IFNC <'\5'>,<'endl'>
               IFNC <'\5'>,<'hhx'>
               IFNC <'\5'>,<'hx'>
               IFNC <'\5'>,<'3x'>
@@ -319,10 +382,12 @@ mPrtX       MACRO
               ENDC
               ENDC
               ENDC
+              ENDC
+              ENDC
             ENDM
 
     ; mPrint -- The closest thing we have to printf
-    ; args:
+    ; Args:
     ;   \1: pixel row of the string's first line
     ;   \2: character column of the first line's first character
     ;   \3: character column of the next lines' first characters
@@ -336,6 +401,9 @@ mPrtX       MACRO
     ;   \4 to \9 can be any of the following:
     ;       <'A literal string'> - print this string
     ;       endl - "carriage return": skip to the next line's first character
+    ;       pendl - like endl, but pauses for user keystroke on full screen
+    ;       qpendl - like pendl, but issues an RTS if the user types a 'q' at a
+    ;                pause---make sure there's nothing else on the stack!
     ;       hhx - pop a byte from the stack and print its hex representation
     ;       hx - pop a word from the stack and print its hex representation
     ;       3x - pop a long from the stack and print the hex representation of
@@ -345,8 +413,13 @@ mPrtX       MACRO
     ;   After an endl/"carriage return", no display scrolling will occur until
     ;       a character is printed on the new line. Additionally and for this
     ;       reason, two endls in sequence will not yield a blank line if the
-    ;       screen is already full. To force a blank line, print a $0D
-    ;       character instead.
+    ;       character instead, or if paging, perhaps follow `pendl`s with
+    ;       `mPrtLit kCrtRow,kCrtCol,#kFirstCol,no_export,<' '>`.
+    ;   The "countdown" to the paging event that occurs after enough `pendl`s
+    ;       can be changed by altering the value in the zLineCount byte, or
+    ;       reset by invoking the `mResetP` macro.
+    ;   See the PAGEDNEWLINE subroutine for further information on `pendl`.
+    ;   See PAGEDNEWLINE and PAGEDRTS for further information on `qpendl`.
 mPrint      MACRO
               IFARG 4
       mPrtX   \1,\2,\3,export,<\4>
@@ -389,9 +462,80 @@ mMemCpy     MACRO
             ENDC
       SUBQ.L   #1,D0                 ; Decrement byte count by 1
 .c\@  MOVE.B   (A0)+,(A1)+           ; Copy next byte from source to dest
-      DBEQ     D0,.c\@               ; Loop until done
+      DBRA     D0,.c\@               ; Loop until done
       MOVEM.W  (A7)+,D0              ; Restore data register
       MOVEM.L  (A7)+,A0-A1           ; Restore address register
+            ENDM
+
+    ; mDump -- Print contiguous bytes, words, or longs, separated by spaces
+    ; Args:
+    ;   \1: pixel row of the dump text's first line
+    ;   \2: character column of the first line's first character
+    ;   \3: character column of the next lines' first characters
+    ;   \4: address register pointing to the first data item to print
+    ;   \5: number of data items to print---must be a byte
+    ;   \6: mPrtX/mPrint symbol for generating newlines; must be either
+    ;       `endl`, `pendl`, or `qpendl`
+    ; Notes:
+    ;   A data length suffix (.B, .W, .L) MUST be present after `mDump`.
+    ;   This macro behaves as if the "position export" keyword to mPrtMem is
+    ;       always "export"; that is, \1 and \2 are always updated with the
+    ;       cursor location post-printing.
+    ;   Prior contents of D0 will be destroyed. If you choose to save D0 on
+    ;       the stack prior to invoking mDump, you must not specify the `qpendl`
+    ;       symbol for newline generation.
+    ;   The address register specified in \4 will not be restored to its
+    ;       original value after invoking mDump.
+mDump       MACRO
+      mPrtLit kCrtRow,kCrtCol,#kFirstCol,export,<'  '>   ; First line indent
+            IFNC '\5','D0'
+      CLR.W   D0                     ; Clear D0 word in prep to be an iterator
+      MOVE.B  \5,D0                  ; Number of items to dump into D0
+            ENDC
+      SUBQ.B  #1,D0                  ; Minus 1 to make it a loop counter
+            IFC '\0','B'
+      m_dlp.B \1,\2,\3,\4,\6,60      ; Inner loop (for bytes)
+            ENDC
+            IFC '\0','W'
+      m_dlp.W \1,\2,\3,\4,\6,58      ; Inner loop (for words)
+            ENDC
+            IFC '\0','L'
+      m_dlp.L \1,\2,\3,\4,\6,56      ; Inner loop (for longs)
+            ENDC
+      mPrint  \1,\2,\3,\6            ; Done with items, so new line
+            ENDM
+
+      ;mDlp    kCrtRow,kCrtCol,kFirstCol,addreg,qpendl,margin
+    ; m_dlp -- Implements the loop inside mDump
+    ; Args:
+    ;   \1: pixel row of the dump text's first line
+    ;   \2: character column of the first line's first character
+    ;   \3: character column of the next lines' first characters
+    ;   \4: address register pointing to the first data item to print
+    ;   \5: mPrtX/mPrint symbol for generating newlines; must be either
+    ;       `endl`, `pendl`, or `qpendl`
+    ;   \6: item display should move on to the next line whenever the cursor
+    ;       advances to or beyond this column
+    ; Notes:
+    ;   A helper macro for mDump; not intended for use elsewhere.
+    ;   All notes from mDump apply here as well.
+    ;   D0 must already be set up as a loop counter for counting the number of
+    ;       items to print.
+m_dlp       MACRO
+.l\@  CMPI.W  #(kFirstCol+\6),\2     ; Do we need a new line?
+      BLO.S   .p\@                   ; No, print the item
+      mPrint  \1,\2,\3,\5,<'  '>     ; Yes, new line, indent
+.p\@  MOVE.\0 (\4)+,-(A7)            ; Next item onto stack to print
+            IFC '\0','B'
+      mPrint  \1,\2,\3,<' '>,hhx     ; Print space and item (for bytes)
+            ENDC
+            IFC '\0','W'
+      mPrint  \1,\2,\3,<' '>,hx      ; Print space and item (for words)
+            ENDC
+            IFC '\0','L'
+      mPrint  \1,\2,\3,<' '>,lx      ; Print space and item (for longs)
+            ENDC
+      DBRA    D0,.l\@                ; Loop to next item
             ENDM
 
     ; m_hb2s -- Helper code core for converting bytes to ASCII hex digits
