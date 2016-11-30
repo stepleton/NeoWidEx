@@ -25,6 +25,24 @@ WINFOMAYBE:
     BEQ.S   WIDGETINFO               ; No, go run it!
     RTS                              ; Yes, back to the caller.
 
+    ; WIDGETCHECK -- Run WINFOMAYBE, then bail to caller's caller if no Widget
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
+    ;   If zIsWidgety is zero (after running WIDGETINFO if needed), the return
+    ;       address for the call to WIDGETCHECK is dropped and RTS is executed,
+    ;       returning to the caller's caller.
+    ;   Will NOT work if the subroutine that called WIDGETCHECK places ANYTHING
+    ;       on the stack prior to the BSR or JSR to WIDGETCHECK.
+WIDGETCHECK:
+    BSR.B   WINFOMAYBE               ; Run WIDGETINFO if it hasn't been run yet
+    TST.B   zIsWidgety               ; Do we have a Widget?
+    BNE.S   .rt                      ; Yes, skip ahead to return
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'YOU NEED A WIDGET TO DO THAT.',$0D>
+    ADDQ.L  #4,A7                    ; Prepare to bail to the caller's caller
+.rt RTS                              ; Return to caller, or caller's caller
+
     ; WIDGETINFO -- Gather information from the $FFFFFF sector
     ; Args:
     ;   (none)

@@ -70,10 +70,12 @@ UILOOP:
     BEQ.S   .m2                      ; Yes, jump to the Widget info-getting code
     CMPI.B  #kKeyCode3,D0            ; Does the user want the spare table?
     BEQ.S   .m3                      ; Yes, jump to spare table printing code
-    CMPI.B  #kKeyCode4,D0            ; Does the user want to see the thanks?
-    BEQ.S   .m4                      ; Yes, jump to the thanks code
-    CMPI.B  #kKeyCode5,D0            ; Does the user want to quit?
-    BEQ.S   .m5                      ; Yes, jump to quitting code
+    CMPI.B  #kKeyCode4,D0            ; Does the user want to reset the servo?
+    BEQ.S   .m4                      ; Yes, jump to the servo resetting code
+    CMPI.B  #kKeyCode5,D0            ; Does the user want to see the thanks?
+    BEQ.S   .m5                      ; Yes, jump to the thanks code
+    CMPI.B  #kKeyCode6,D0            ; Does the user want to quit?
+    BEQ.S   .m6                      ; Yes, jump to quitting code
 
     BRA.S   UILOOP                   ; Get next user command
 
@@ -89,12 +91,16 @@ UILOOP:
 .m3 BSR     SPAREPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 4: Show thanks.
-.m4 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    ; Main loop option 4: Reset the servo.
+.m4 BSR     CMD_Reset_Servo
     BRA.S   UILOOP
 
-    ; Main loop option 5: Quit and return to the ROM.
-.m5 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    ; Main loop option 5: Show thanks.
+.m5 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    BRA.S   UILOOP
+
+    ; Main loop option 6: Quit and return to the ROM.
+.m6 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
 
@@ -103,6 +109,8 @@ UILOOP:
     INCLUDE NeoWidEx_UI.X68
 
     INCLUDE NeoWidEx_IO.X68
+
+    INCLUDE NeoWidEx_CMD_Reset_Servo.X68
 
     PAGE
 * NeoWidEx numerical data ==================================
@@ -130,8 +138,9 @@ sMainMenu:
     DC.B    'LAST STATUS   1',0
     DC.B    'DRIVE INFO    2',0
     DC.B    'SPARE TABLE   3',0
-    DC.B    'THANKS        4',0
-    DC.B    'QUIT          5',0
+    DC.B    'RESET SERVO   4',0
+    DC.B    'THANKS        5',0
+    DC.B    'QUIT          6',0
     DC.B    0                        ; End of menu.
 
 

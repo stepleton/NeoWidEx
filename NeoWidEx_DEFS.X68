@@ -38,6 +38,18 @@ kKeyCode7   EQU  $E2                 ; Key code for the 7 key
 kKeyCode8   EQU  $E3                 ; Key code for the 8 key
 kKeyCode9   EQU  $D0                 ; Key code for the 9 key
 
+kWIONoDisk  EQU  $01                 ; WIDGETIO error: no disk present
+kWIOBusy    EQU  $02                 ; WIDGETIO error: disk won't deassert BSY
+kWIOHello   EQU  $03                 ; WIDGETIO error: initial handshake failed
+kWIOCmdAck  EQU  $05                 ; WIDGETIO error: disk didn't ack command
+kWIODataAck EQU  $06                 ; WIDGETIO error: disk didn't ack data
+
+kVia2InA    EQU  $08                 ; VIA 2 input port A, relative to kVia2Base
+kVia2InB    EQU  $00                 ; VIA 2 input port B, relative to kVia2Base
+kVia2OutA   EQU  $08                 ; VIA 2 output port A, rel. to kVia2Base
+kVia2OutB   EQU  $00                 ; VIA 2 output port B, rel. to kVia2Base
+kVia2DirA   EQU  $18                 ; VIA 2 port A dir., relative to kVia2Base
+
     ; Screen geometry (note: ROM chars are 8 bits wide)
 kRowBytes   EQU  90                  ; Screen width in chars/bytes
 
@@ -82,7 +94,8 @@ kStdStatus  EQU  $01B4               ; ROM-alloc'd space for 4-byte disk status
 
     ; Device addresses
 kDiskMem    EQU  $00FCC001           ; Shared disk controller memory
-kVia1Base   EQU  $00FCDD81           ; VIA handling floppy interrupts
+kVia1Base   EQU  $00FCDD81           ; VIA handling parallel port resets
+kVia2Base   EQU  $00FCD901           ; VIA handling parallel port data+handshake
 
     ; ROM public routines
 kConvRtd5   EQU  $00FE0088           ; Display a string on the screen
@@ -107,11 +120,13 @@ kDispMnuBox EQU  $00FE27D0           ; Display a menu box
 kDispMsg    EQU  $00FE3700           ; Print a message
 kDispVal    EQU  $00FE373A           ; Print a single character
 kEjectDisk  EQU  $00FE1E56           ; Eject floppy disk
+kFindD2     EQU  $00FE20BC           ; ProFile/Widget handshake
 kGetError   EQU  $00FE26E6           ; kGetInput error bailout routine
 kGetInput   EQU  $00FE2C46           ; Get keyboard/mouse input
 kMakeMenu   EQU  $00FE336A           ; Make a drop-down menu
 kMakeWindow EQU  $00FE31C6           ; Make a window
 kPaintBox   EQU  $00FE3128           ; Draw a rectangle tiled with a word
+kProInit    EQU  $00FE1FF0           ; Initialise parallel I/O
 kScroll     EQU  $00FE2B08           ; Scroll service mode text up one line
 kWait4Input EQU  $00FE2D38           ; Wait for input from kbd/mouse COPS
 

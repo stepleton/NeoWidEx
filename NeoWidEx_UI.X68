@@ -249,7 +249,7 @@ PAGEDNEWLINE:
     ;   Checks the value stored at zStopPaging; if nonzero, the return address
     ;       for the call to PAGEDRTS is dropped from the stack and RTS is
     ;       executed, returning to the caller's caller.
-    ;   Will NOT work if the subroutine that called PAGEDRTS placed ANYTHING
+    ;   Will NOT work if the subroutine that called PAGEDRTS places ANYTHING
     ;       on the stack prior to the BSR or JSR to PAGEDRTS.
 PAGEDRTS:
     TST.B   zStopPaging              ; Did the user once press 'q' while paging?
@@ -363,6 +363,7 @@ zStopPaging:
     DS.W    0                        ; Force even alignment for following data
 
 
+    PAGE
 * NeoWidEx UI strings =======================================
     SECTION kSecStrings
 

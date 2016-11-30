@@ -583,3 +583,22 @@ m_cp3b      MACRO
       MOVE.B  (A0)+,\2               ; Copy third device number byte
       MOVEM.L (A7)+,A0               ; Restore A0
             ENDM
+
+    ; m_iOff -- Disable interrupts
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Saves current value of the status register to the stack.
+m_iOff      MACRO
+      MOVE.W  SR,-(A7)
+      ORI.W   #$0700,SR
+            ENDM
+
+    ; m_iOn -- Restore status register from stack, usually reenabling interrupts
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Usually used in tandem with `m_iOff`.
+m_iOn       MACRO
+      MOVE.W  (A7)+,SR
+            ENDM
