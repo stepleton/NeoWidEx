@@ -66,16 +66,18 @@ UILOOP:
 
     CMPI.B  #kKeyCode1,D0            ; Does the user want the last cmd. status?
     BEQ.S   .m1                      ; Yes, jump to the status printing code
-    CMPI.B  #kKeyCode2,D0            ; Does the user want info about the Widget?
-    BEQ.S   .m2                      ; Yes, jump to the Widget info-getting code
-    CMPI.B  #kKeyCode3,D0            ; Does the user want the spare table?
-    BEQ.S   .m3                      ; Yes, jump to spare table printing code
-    CMPI.B  #kKeyCode4,D0            ; Does the user want to reset the servo?
-    BEQ.S   .m4                      ; Yes, jump to the servo resetting code
-    CMPI.B  #kKeyCode5,D0            ; Does the user want to see the thanks?
-    BEQ.S   .m5                      ; Yes, jump to the thanks code
-    CMPI.B  #kKeyCode6,D0            ; Does the user want to quit?
-    BEQ.S   .m6                      ; Yes, jump to quitting code
+    CMPI.B  #kKeyCode2,D0            ; Does the user want the last read's bytes?
+    BEQ.S   .m2
+    CMPI.B  #kKeyCode3,D0            ; Does the user want info about the Widget?
+    BEQ.S   .m3                      ; Yes, jump to the Widget info-getting code
+    CMPI.B  #kKeyCode4,D0            ; Does the user want the spare table?
+    BEQ.S   .m4                      ; Yes, jump to spare table printing code
+    CMPI.B  #kKeyCode5,D0            ; Does the user want to reset the servo?
+    BEQ.S   .m5                      ; Yes, jump to the servo resetting code
+    CMPI.B  #kKeyCode6,D0            ; Does the user want to see the thanks?
+    BEQ.S   .m6                      ; Yes, jump to the thanks code
+    CMPI.B  #kKeyCode7,D0            ; Does the user want to quit?
+    BEQ.S   .m7                      ; Yes, jump to quitting code
 
     BRA.S   UILOOP                   ; Get next user command
 
@@ -83,24 +85,28 @@ UILOOP:
 .m1 BSR     STATUSPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 2: Get Widget info.
-.m2 BSR     WINFOPRINT
+    ; Main loop option 3: Print raw tag and sector data
+.m2 BSR     RAWPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 3: Print spare table.
-.m3 BSR     SPAREPRINT
+    ; Main loop option 3: Get Widget info.
+.m3 BSR     WINFOPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 4: Reset the servo.
-.m4 BSR     CMD_Reset_Servo
+    ; Main loop option 4: Print spare table.
+.m4 BSR     SPAREPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 5: Show thanks.
-.m5 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    ; Main loop option 5: Reset the servo.
+.m5 BSR     CMD_Reset_Servo
     BRA.S   UILOOP
 
-    ; Main loop option 6: Quit and return to the ROM.
-.m6 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    ; Main loop option 6: Show thanks.
+.m6 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    BRA     UILOOP
+
+    ; Main loop option 7: Quit and return to the ROM.
+.m7 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
 
@@ -111,6 +117,17 @@ UILOOP:
     INCLUDE NeoWidEx_IO.X68
 
     INCLUDE NeoWidEx_CMD_Reset_Servo.X68
+
+RAWPRINT:
+    mResetP                          ; Reset paging
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DATA FROM LAST READ ---'>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'RAW TAG DATA'>,endl
+    LEA     zSectorTag,A0
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#5,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SECTOR DATA'>,endl
+    LEA     zSectorData,A0
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#128,endl
+    RTS
 
     PAGE
 * NeoWidEx numerical data ==================================
@@ -136,11 +153,12 @@ zReturnCode:
 sMainMenu:
     DC.B    'COMMANDS',0             ; Menu title
     DC.B    'LAST STATUS   1',0
-    DC.B    'DRIVE INFO    2',0
-    DC.B    'SPARE TABLE   3',0
-    DC.B    'RESET SERVO   4',0
-    DC.B    'THANKS        5',0
-    DC.B    'QUIT          6',0
+    DC.B    'LAST RAW DATA 2',0
+    DC.B    'DRIVE INFO    3',0
+    DC.B    'SPARE TABLE   4',0
+    DC.B    'RESET SERVO   5',0
+    DC.B    'THANKS        6',0
+    DC.B    'QUIT          7',0
     DC.B    0                        ; End of menu.
 
 
@@ -158,6 +176,7 @@ zSectorData:
 
     ; Designates NEOWIDEX as the beginning of the program.
     END    NEOWIDEX
+
 
 
 *~Font name~Courier New~

@@ -68,7 +68,7 @@ WIDGETCMD:
 .lp MOVE.B  (A0),(A1)+               ; Copy current byte to buffer
     ADD.B   (A0)+,D1                 ; Add current byte to the checksum
     DBRA    D0,.lp                   ; Loop to the next byte
-.rt NEG.B   D1                       ; Negate completed checksum
+.rt EORI.B  #$FF,D1                  ; Compute one's complement of checksum
     MOVE.B  D1,(A1)                  ; Add checksum to the end of the command
     MOVEM.W (A7)+,D0-D1              ; Restore data registers used
     MOVEM.L (A7)+,A0-A1              ; Restore address registers used
@@ -283,6 +283,7 @@ sWIOErrStrings:
 
 ** (Back to the code section) **
     SECTION kSecCode
+
 
 
 *~Font name~Courier New~

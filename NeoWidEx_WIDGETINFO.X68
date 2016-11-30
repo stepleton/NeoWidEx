@@ -379,6 +379,18 @@ _SPAREPRINTWI:
     mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sSpareBitmap3,(A0)+
     SUBQ.B  #2,zLineCount            ; Inform the pager about two newlines
 
+    ; Print raw head pointer array data
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW HEAD POINTER ARRAY'>,qpendl
+    mDump.B kCrtRow,kCrtCol,#kFirstCol,A0,zSpares,qpendl
+
+    ; Print raw spare table data.
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SPARE TABLE DATA'>,qpendl
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,zSpares,qpendl
+
+    ; Print interleave map
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'INTERLEAVE MAP'>,qpendl
+    mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,zSectors,qpendl
+
     ; Print allocated entries in the spare table.
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARES ALLOCATED'>,pendl
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sSpareHeadings
@@ -437,18 +449,6 @@ _SPAREPRINTWI:
 .s7 ADDQ.W  #1,D0                    ;   On to the next 1024-block chunk
     CMPI.W  #128,D0                  ;   Have we seen them all?
     BLO     .s0                      ;   No, on to the next
-
-    ; Print raw head pointer array data
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW HEAD POINTER ARRAY'>,qpendl
-    mDump.B kCrtRow,kCrtCol,#kFirstCol,A0,zSpares,qpendl
-
-    ; Print raw spare table data.
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SPARE TABLE DATA'>,qpendl
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,zSpares,qpendl
-
-    ; Print interleave map
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'INTERLEAVE MAP'>,qpendl
-    mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,zSectors,qpendl
 
     ; Print overall checksum for this sector
     MOVE.B  (A1)+,D0                 ; MSB of checksum into D0
@@ -742,6 +742,7 @@ sSpareHeadings:
 
 ** (Back to the code section) **
     SECTION kSecCode
+
 
 
 *~Font name~Courier New~
