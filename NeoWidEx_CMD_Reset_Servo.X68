@@ -31,8 +31,7 @@ CMD_Reset_Servo:
     CLR.W   zWIOWriteLen             ; There are no bytes to write
     BSR     WIDGETIO                 ; Issue command
     BEQ     .ok                      ; All OK? Exit
-    MOVE.B  zWIOError,-(A7)          ; Error! Print error byte
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'ERROR '>,hhx,<'... CHECK STATUS.'>,endl
+    BSR     WIDGETPERROR             ; Error! Print error message
     RTS                              ; Back to caller
 .ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DONE.'>,endl
     RTS                              ; Back to caller

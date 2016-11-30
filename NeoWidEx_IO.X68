@@ -95,14 +95,14 @@ WIDGETIO:
     ; 1. Initialise parallel I/O
     JSR     kProInit                 ; Init parallel I/O, A0; disk present?
     BEQ.S   .s2                      ; It's present; on to step 2
-    MOVE.B  kWIONoDisk,zWIOError     ; Absent; mark the error and bail
+    MOVE.B  #kWIONoDisk,zWIOError    ; Absent; mark the error and bail
     BRA     .rt                      ; Off to the exit
 
     ; 2. Wait for drive to drop BSY
-.s2 MOVE.L  kSctrTime,D0             ; We'll give it around three minutes?
+.s2 MOVE.L  #kSctrTime,D0            ; We'll give it around three minutes?
     BSR     _WAITONBUSY              ; Wait for BSY to deassert
     BEQ.S   .s3                      ; BSY deasserted; on to step 3
-    MOVE.B  kWIOBusy,zWIOError       ; BSY still asserted; mark error and bail
+    MOVE.B  #kWIOBusy,zWIOError      ; BSY still asserted; mark error and bail
     BRA     .rt                      ; Exeunt
 
     ; 3. Do initial handshake
@@ -116,7 +116,7 @@ WIDGETIO:
     BNE.S   .f3                      ; The drive is still busy; give up
     JSR     kFindD2                  ; Not busy; try handshake again
     BCC.S   .s4                      ; Success? Move along
-.f3 MOVE.B  kWIOHello,zWIOError      ; Failure! Mark error...
+.f3 MOVE.B  #kWIOHello,zWIOError     ; Failure! Mark error...
     BRA.S   .rt                      ; ...and head off to the bar
 
     ; 4. Send command bytes
@@ -134,7 +134,7 @@ WIDGETIO:
 .c5 ADDQ    #2,D2                    ; Expected response is instruction+2
     JSR     kFindD2                  ; Try the handshake
     BCC.S   .s6                      ; Success? Keep moving
-    MOVE.B  kWIOCmdAck,zWIOError     ; Failure! Mark error...
+    MOVE.B  #kWIOCmdAck,zWIOError    ; Failure! Mark error...
     BRA.S   .rt                      ; ...and move to Dallas
 
     ; 6. Reading or writing? If reading, skip ahead to the read
@@ -150,7 +150,7 @@ WIDGETIO:
     MOVE.B  #$06,D2                  ; Expected response is $06
     JSR     kFindD2                  ; Try the handshake
     BCC.S   .s9                      ; Success? Keep moving
-    MOVE.B  kWIODataAck,zWIOError    ; Failure! Mark error...
+    MOVE.B  #kWIODataAck,zWIOError   ; Failure! Mark error...
     BRA.S   .rt                      ; ...and take up golf
 
     ; 9. Read status bytes
@@ -216,6 +216,37 @@ _COPYIN:
     DBRA    D0,.lp                   ; Loop to next byte
 .rt RTS                              ; Back to the caller
 
+    ; WIDGETPERROR -- Print text describing the error encountered by WIDGETIO
+    ; Args:
+    ;   (none) (uses zWIOError)
+    ; Notes:
+    ;   (none)
+WIDGETPERROR:
+    MOVEM.L A0/D0,-(A7)              ; Save used registers to stack
+    MOVE.B  zWIOError,D0             ; Copy error to D0
+    BEQ.S   .ok                      ; Wait, there's no error, declare victory!
+    LEA     sWIOErrStrings,A0        ; Point A0 to the first error string
+.ol TST.B   (A0)                     ; Out of error strings?
+    BEQ.S   .ue                      ; Skip ahead to print "unknown error"
+    CMP.B   (A0)+,D0                 ; Is this string for our error code?
+    BEQ     .ke                      ; It is, so skip ahead to print it
+.il TST.B   (A0)+                    ; It's not, so find the next string
+    BNE.S   .il                      ; Not at the end yet; keep scanning
+    BRA.S   .ol                      ; At the next string, start from the top
+
+.ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<'OPERATION SUCCESSFUL.'>,endl
+    BRA     .rt                      ; Skip ahead to return to caller
+.ue MOVE.B  zWIOError,-(A7)          ; Unusual error code on stack to print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'AN UNKNOWN ERROR WITH CODE '>,hhx
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' OCCURRED.'>,endl
+    BRA.S   .sr                      ; Skip ahead to return to caller
+.ke MOVE.L  A0,-(A7)                 ; Error string address on stack to print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,s,endl
+
+.sr mPrint  kCrtRow,kCrtCol,#kFirstCol,<'FULL STATUS MAY HELP DEBUG.'>,endl
+.rt MOVEM.L (A7)+,A0/D0              ; Restore used registers from stack
+    RTS                              ; Back to the caller
+
 
     PAGE
 * NeoWidEx disk I/O scratch data allocation =================
@@ -235,6 +266,19 @@ zWIOWriteLen:
     DC.W    $FFFF                    ; # of bytes to write
 zWIOWritePtr:
     DC.W    $FFFFFFFF                ; Pointer to buffer of bytes to write
+
+
+    PAGE
+* NeoWidEx Reset_Servo strings ==============================
+    SECTION kSecStrings
+
+sWIOErrStrings:
+    DC.B    kWIONoDisk,'THERE APPEARS TO BE NO DRIVE CONNECTED TO THIS LISA.',0
+    DC.B    kWIOBusy,'GAVE UP WAITING FOR THE DRIVE TO BE READY.',0
+    DC.B    kWIOHello,'THE INITIAL HANDSHAKE WITH THE DRIVE FAILED.',0
+    DC.B    kWIOCmdAck,'THE POST-COMMAND HANDSHAKE WITH THE DRIVE FAILED.',0
+    DC.B    kWIODataAck,'THE POST-WRITE HANDSHAKE WITH THE DRIVE FAILED.',0
+    DC.B    0                        ; Error string null-terminator
 
 
 ** (Back to the code section) **
