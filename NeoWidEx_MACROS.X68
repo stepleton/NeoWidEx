@@ -443,9 +443,9 @@ mPrint      MACRO
 
     ; mMemCpy -- Copy bytes from one memory location to another
     ; Args:
-    ;   \0: Starting source address
-    ;   \1: Starting destination address
-    ;   \2: Number of bytes to copy
+    ;   \1: Starting source address
+    ;   \2: Starting destination address
+    ;   \3: Number of bytes to copy
     ; Notes:
     ;   Behaviour is undefined if source and destination memory regions overlap.
 mMemCpy     MACRO
@@ -458,7 +458,7 @@ mMemCpy     MACRO
       MOVEA.L  \2,A1                 ; Copy destination address to A1
             ENDC
             IFNC '\3','D0'
-      MOVE.L   \3,D0                 ; Copy byte count to D0
+      MOVE.W   \3,D0                 ; Copy byte count to D0
             ENDC
       SUBQ.L   #1,D0                 ; Decrement byte count by 1
 .c\@  MOVE.B   (A0)+,(A1)+           ; Copy next byte from source to dest

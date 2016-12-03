@@ -253,7 +253,7 @@ STATUSPRINT:
     ; Notes:
     ;   Runs WIDGETINFO if it hasn't been run yet, and in that case, has all
     ;       of WIDGETINFO's side effects. If WIDGETINFO has been run, then
-    ;       only D0-D2/A0-A1 will be trashed.
+    ;       only D0-D2/A0-A2 will be trashed.
 SPAREPRINT:
     BSR     WINFOMAYBE               ; Run WIDGETINFO if needed
     mResetP                          ; Reset paging (only needed for Widget)
@@ -379,32 +379,37 @@ _SPAREPRINTWI:
     mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sSpareBitmap3,(A0)+
     SUBQ.B  #2,zLineCount            ; Inform the pager about two newlines
 
-    ; Print raw head pointer array data
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW HEAD POINTER ARRAY'>,qpendl
-    mDump.B kCrtRow,kCrtCol,#kFirstCol,A0,zSpares,qpendl
-
-    ; Print raw spare table data.
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SPARE TABLE DATA'>,qpendl
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,zSpares,qpendl
-
-    ; Print interleave map
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'INTERLEAVE MAP'>,qpendl
-    mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,zSectors,qpendl
+    ; Prepare the array of bytes we'll use to track which spare table entries
+    ; we've visited. Each entry in the array corresponds to an entry in the
+    ; spare table. Its value is either $FF (we haven't visited that spare table
+    ; entry) or the index of the first entry in the head pointer array (AKA the
+    ; "1024-block chunk index") that caused us to visit that spare table entry.
+    MOVEA.L #(zSectorTag+$214),A0    ; Start of the array
+    CLR.W   D0                       ; Anticipating D0 being a loop counter
+    MOVE.B  zSpares,D0               ; Number of entries in the array
+    SUBQ.W  #1,D0                    ; Minus one to finish it as a loop counter
+.a0 MOVE.B  #$FF,(A0)+               ; Copy $FF to this entry
+    DBRA    D0,.a0                   ; On to the next entry
 
     ; Print allocated entries in the spare table.
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARES ALLOCATED'>,pendl
-    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sSpareHeadings
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,pendl
     MOVEA.L #(zSectorTag+$A),A0      ; A0 to start of the head pointer array
     MOVEA.L #(zSectorTag+$96),A1     ; A1 to start of the heap
+    MOVEA.L #(zSectorTag+$214),A2    ; A2 to start of visited entry array
     CLR.W   D0                       ; D0: loop over 1024-block chunk indices
 
 .s0 MOVE.B  0(A0,D0.W),D1            ;   Head ptr for 1st 1024-block chunk to D1
     BCLR.L  #7,D1                    ;   Is there a spare here? +(Clear 8th bit)
-    BNE     .s7                      ;   No, advance to the next chunk
+    BNE     .s8                      ;   No, advance to the next chunk
+
+    MOVE.B  D0,-(A7)                 ;   Yes, print out linked list
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' FROM LINKED LIST '>,hhx,qpendl
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sSpareHeadings
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl
 
 .s1 CLR.W   D2                       ;     Clear D2 word in anticipation of...
-    MOVE.B  D1,D2                    ;     ...copy from D1 and multiply by 4...
+    MOVE.B  D1,D2                    ;     ...copy from D1, then update the...
+    MOVE.B  D0,0(A2,D2.W)            ;     ...visited entry array, then *4...
     LSL.W   #2,D2                    ;     ...making it an index into the "heap"
 
     MOVE.B  D1,-(A7)                 ;     Print spare block number
@@ -442,13 +447,39 @@ _SPAREPRINTWI:
 .s5 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' . UNKNOWN'>
 .s6 mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl
 
-    MOVE.B  3(A1,D2.W),D1            ;     Next spare record pointer to D1
-    BCLR.L  #7,D1                    ;     Spare here? +(Clear 8th bit)
-    BEQ     .s1                      ;     Yes, repeat inner loop
+    BTST.B  #7,0(A1,D2.W)            ;     Any more spares for this chunk?
+    BNE     .s8                      ;     No, all done, on to the next chunk
 
-.s7 ADDQ.W  #1,D0                    ;   On to the next 1024-block chunk
+    MOVE.B  3(A1,D2.W),D1            ;     Next spare record pointer to D1
+    CMP.B   zSpares,D1               ;     Let's make sure it's in bounds
+    BLO     .s7                      ;     It's in bounds, skip ahead
+    MOVE.L  0(A1,D2.W),-(A7)         ;     Not in bounds; print a warning
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sPointerOob
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,lx,qpendl
+    BRA     .s8
+
+.s7 ANDI.W  #$FF,D1                  ;     Prepare D1 to be used as an index
+    CMPI.B  #$FF,0(A2,D1.W)          ;     Next record has been visited already?
+    BEQ     .s1                      ;     No, repeat inner loop
+    MOVE.L  0(A1,D2.W),-(A7)         ;     Yes; print a warning
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sPointerVisited
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'    RAW RECORD-'>,lx,qpendl
+
+.s8 ADDQ.W  #1,D0                    ;   On to the next 1024-block chunk
     CMPI.W  #128,D0                  ;   Have we seen them all?
     BLO     .s0                      ;   No, on to the next
+
+    ; Print raw head pointer array data
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW HEAD POINTER ARRAY'>,qpendl
+    mDump.B kCrtRow,kCrtCol,#kFirstCol,A0,zSpares,qpendl
+
+    ; Print raw spare table data.
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SPARE TABLE DATA'>,qpendl
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,zSpares,qpendl
+
+    ; Print interleave map
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'INTERLEAVE MAP'>,qpendl
+    mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,zSectors,qpendl
 
     ; Print overall checksum for this sector
     MOVE.B  (A1)+,D0                 ; MSB of checksum into D0
@@ -738,6 +769,10 @@ sSpareBitmap3:
     DC.B    ' ~}|{zyxw vutsrqpo',$0D,0
 sSpareHeadings:
     DC.B    '  NUM .  LBA   . IN USE  . USEABLE . SPARE TYPE . CONTENTS',0
+sPointerOob:
+    DC.B    '    NEXT ENTRY INDEX OUT OF BOUNDS. RAW RECORD-',0
+sPointerVisited:
+    DC.B    '    NEXT ENTRY INDEX IS FOR AN ENTRY WE ALREADY VISITED',0
 
 
 ** (Back to the code section) **
