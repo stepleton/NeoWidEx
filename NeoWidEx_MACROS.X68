@@ -168,7 +168,7 @@ mPrtHxB     MACRO
       BSR.W   HEXB2STR               ; Convert byte to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
-      ADDA.W  #2,A7                  ; Drop byte from stack
+      ADDQ.L  #2,A7                  ; Drop byte from stack
             ENDM
 
     ; mPrtHxW -- Print a hexadecimal representation of a word to the display
@@ -187,7 +187,7 @@ mPrtHxW     MACRO
       BSR.W   HEXW2STR               ; Convert word to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
-      ADDA.W  #2,A7                  ; Drop byte from stack
+      ADDQ.L  #2,A7                  ; Drop byte from stack
             ENDM
 
     ; mPrtHx3 -- Print a hexadecimal representation of a 3-byte int to display
@@ -206,7 +206,7 @@ mPrtHx3     MACRO
       BSR.W   HEX3B2STR              ; Convert long to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
-      ADDA.W  #4,A7                  ; Drop byte from stack
+      ADDQ.L  #4,A7                  ; Drop byte from stack
             ENDM
 
     ; mPrtHxL -- Print a hexadecimal representation of a long to the display
@@ -225,7 +225,7 @@ mPrtHxL     MACRO
       BSR.W   HEXL2STR               ; Convert long to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
-      ADDA.W  #4,A7                  ; Drop byte from stack
+      ADDQ.L  #4,A7                  ; Drop byte from stack
             ENDM
 
     ; mPrtStr -- Print a string pointed to by the top stack value to the display
@@ -243,7 +243,7 @@ mPrtStr     MACRO
       MOVEA.L 4(A7),A3               ; Copy address from stack to A3
       mPrtMem \1,\2,\3,\4,A3         ; Print the string at the address
       MOVEM.L (A7)+,A3               ; Restore register contents
-      ADDA.W  #4,A7                  ; Drop address from stack
+      ADDQ.L  #4,A7                  ; Drop address from stack
             ENDM
 
     ; mPrtCr -- "Print" a carriage return, i.e. move to the next line.
