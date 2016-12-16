@@ -24,11 +24,12 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $5000                    ; Various numerical data items live here
+    ORG     $6000                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $5100                    ; Structured scratch space
+    ORG     $6100                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $5200                    ; Program strings bring up the rear
+    ORG     $6200                    ; Program strings bring up the rear
+    SECTION kSecCode
 
 
     PAGE
@@ -41,7 +42,6 @@
 * NeoWidEx code ============================================
     OPT     NOMEX                    ; Expand no macros in listings
   ; OPT     MEX                      ; Expand all macros in listings
-    SECTION kSecCode
 
 NEOWIDEX:
     ; ## 0. Eject the floppy disk ##
@@ -91,28 +91,32 @@ UILOOP:
 .m2 BSR     RAWPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 3: Print full Widget controller status
-.m3 BSR     CMD_Read_Controller_Status
+    ; Main loop option 3: Get Widget info
+.m3 BSR     WINFOPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 4: Get Widget info.
-.m4 BSR     WINFOPRINT
+    ; Main loop option 4: Print full Widget controller status
+.m4 BSR     CMD_Read_Controller_Status
     BRA.S   UILOOP
 
-    ; Main loop option 5: Print spare table.
-.m5 BSR     SPAREPRINT
+    ; Main loop option 5: Print full Widget servo status
+.m5 BSR     CMD_Read_Servo_Status
     BRA.S   UILOOP
 
-    ; Main loop option 6: Reset the servo.
-.m6 BSR     CMD_Reset_Servo
+    ; Main loop option 6: Print spare table
+.m6 BSR     SPAREPRINT
     BRA.S   UILOOP
 
-    ; Main loop option 7: Show thanks.
-.m7 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    ; Main loop option 7: Reset the servo
+.m7 BSR     CMD_Reset_Servo
+    BRA.S   UILOOP
+
+    ; Main loop option 8: Show thanks
+.m8 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
     BRA     UILOOP
 
-    ; Main loop option 8: Quit and return to the ROM.
-.m8 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    ; Main loop option 9: Quit and return to the ROM
+.m9 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
 
@@ -125,6 +129,8 @@ UILOOP:
     INCLUDE NeoWidEx_CMD_Reset_Servo.X68
 
     INCLUDE NeoWidEx_CMD_Read_Controller_Status.X68
+
+    INCLUDE NeoWidEx_CMD_Read_Servo_Status.X68
 
 RAWPRINT:
     mResetP                          ; Reset paging
@@ -162,13 +168,13 @@ sMainMenu:
     DC.B    'COMMANDS',0             ; Menu title
     DC.B    'LAST STATUS   1',0
     DC.B    'LAST RAW DATA 2',0
-    DC.B    'FULL STATUS   3',0
-   ;DC.B    'SERVO STATUS  4',0
-    DC.B    'DRIVE INFO    4',0
-    DC.B    'SPARE TABLE   5',0
-    DC.B    'RESET SERVO   6',0
-    DC.B    'THANKS        7',0
-    DC.B    'QUIT          8',0
+    DC.B    'DRIVE INFO    3',0
+    DC.B    'FULL STATUS   4',0
+    DC.B    'SERVO STATUS  5',0
+    DC.B    'SPARE TABLE   6',0
+    DC.B    'RESET SERVO   7',0
+    DC.B    'THANKS        8',0
+    DC.B    'QUIT          9',0
     DC.B    0                        ; End of menu.
 
 
