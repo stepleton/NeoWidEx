@@ -20,8 +20,8 @@
     ; Args:
     ;   (none)
     ; Notes:
+    ;   Trashes D0/A0-A1.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
-    ;   Otherwise, trashes D0.
 CMD_Read_Servo_Status:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
 
@@ -42,7 +42,6 @@ CMD_Read_Servo_Status:
     BSR     .pw                      ; Print raw status bytes
     ; Print servo status bitmap 1 part 1 with explanatory text.
     mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sServoStatus1Bitmap1,kStdStatus
-  ;mPrint kCrtRow,kCrtCol,#kFirstCol,<$0D
     MOVE.B  (kStdStatus+1),D0        ; Byte 1 to D0 to print offset DAC value
     BSR     _PRINTSERVOOFFSETDAC     ; Print offset DAC value
     ; Print servo status bitmap 1 part 2 with explanatory text.
@@ -185,13 +184,12 @@ CMD_Read_Servo_Status:
     RTS                              ; No error, return to caller at last
 .es mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'WHILE RESTORING STANDARD STATUS'>
 
-.er mPrint  kCrtRow,kCrtCol,#kFirstCol,endl
-    BSR     WIDGETPERROR             ; Error! Print error message
+.er BSR     WIDGETPERROR             ; Error! Print error message
     RTS                              ; Back to caller, (often via .ss)
 
     ; Tiny subroutine that CMD_Read_Servo_Status uses to print the four status
     ; status bytes read from the Widget servo.
-.pw mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'                          '>
+.pw mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'                          '>
     MOVE.B  (kStdStatus+3),-(A7)     ; Fourth status byte to stack for printing
     MOVE.B  (kStdStatus+2),-(A7)     ; Third status byte
     MOVE.B  (kStdStatus+1),-(A7)     ; Second status byte

@@ -23,7 +23,7 @@
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 CMD_Reset_Servo:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- RESET SERVO ---'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- RESET SERVO ---'>
     MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdResetServo,A0        ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
@@ -33,7 +33,7 @@ CMD_Reset_Servo:
     BEQ     .ok                      ; All OK? Exit
     BSR     WIDGETPERROR             ; Error! Print error message
     RTS                              ; Back to caller
-.ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DONE.'>,endl
+.ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
     RTS                              ; Back to caller
 
 

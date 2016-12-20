@@ -39,7 +39,7 @@ WIDGETCHECK:
     BSR.B   WINFOMAYBE               ; Run WIDGETINFO if it hasn't been run yet
     TST.B   zIsWidgety               ; Do we have a Widget?
     BNE.S   .rt                      ; Yes, skip ahead to return
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'YOU NEED A WIDGET TO DO THAT.',$0D>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'YOU NEED A WIDGET TO DO THAT.'>
     ADDQ.L  #4,A7                    ; Prepare to bail to the caller's caller
 .rt RTS                              ; Return to caller, or caller's caller
 
@@ -155,10 +155,10 @@ WIDGETINFO:
     ;       beyond printing stuff.
 WINFOPRINT:
     BSR     WINFOMAYBE               ; Run WIDGETINFO if needed
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DRIVE INFO ---'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DRIVE INFO ---',$0D>
 
     MOVE.L  zDriveNamePtr,-(A7)      ; Drive type string pointer onto stack
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'.'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'.',$0D>
 
     MOVE.L  #zDeviceName,-(A7)       ; Drive device name pointer onto stack
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DEVICE NAME-/'>,s,<'/.'>
@@ -166,9 +166,9 @@ WINFOPRINT:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  NUMBER-'>,3x,<'. '>
     TST.B   zIsWidgety               ; Did we decide this was a Widget?
     BNE     .yw                      ; Yes, say so
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  NOT A WIDGET.'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  NOT A WIDGET.',$0D>
     BRA     .bi                      ; No; print above, skip ahead
-.yw mPrint  kCrtRow,kCrtCol,#kFirstCol,<' SEEMS WIDGETY.'>,endl
+.yw mPrint  kCrtRow,kCrtCol,#kFirstCol,<' SEEMS WIDGETY.',$0D>
 
     ; Print basic information about the drive.
 .bi MOVE.W  zFirmware,-(A7)          ; Drive firmware revision onto stack
@@ -183,7 +183,7 @@ WINFOPRINT:
     BEQ     .sc                      ; No, so skip ahead
 
     MOVE.W  zCylinders,-(A7)         ; Drive cylinder count onto stack
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'TRACKS-'>,hx
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'TRACKS-'>,hx
 
     MOVE.B  zHeads,-(A7)             ; Drive head count onto stack
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  HEADS-'>,hhx
@@ -208,7 +208,7 @@ WINFOPRINT:
     ; Print number of spares in use.
 .s0 TST.B   zSparesInUse             ; Are any spares in use?
     BNE.S   .s1                      ; Yes, skip ahead to say how many
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO SPARES IN USE'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO SPARES IN USE',$0D>
     BRA     .b0                      ; Jump ahead to print bad blocks in use
 .s1 MOVE.B  zSparesInUse,-(A7)       ; Drive spares-in-use count onto stack
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARES IN USE-'>,hhx,endl
@@ -216,10 +216,10 @@ WINFOPRINT:
     ; Print number of bad blocks.
 .b0 TST.B   zBadBlocks               ; Are there any bad blocks?
     BNE.S   .b1                      ; Yes, skip ahead to say how many
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO BAD BLOCKS'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO BAD BLOCKS'>
     BRA     .rt                      ; Jump ahead to print bad blocks in use
 .b1 MOVE.B  zBadBlocks,-(A7)         ; Drive spares-in-use count onto stack
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCKS-'>,hhx,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCKS-'>,hhx
 
 .rt RTS                              ; Back to the caller
 
@@ -230,7 +230,7 @@ WINFOPRINT:
     ;   (none)
 STATUSPRINT:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- LAST STANDARD STATUS ---'>
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'                          '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'                          '>
     MOVE.B  (kStdStatus+3),-(A7)     ; Fourth status byte to stack for printing
     MOVE.B  (kStdStatus+2),-(A7)     ; Third status byte
     MOVE.B  (kStdStatus+1),-(A7)     ; Second status byte
@@ -243,7 +243,7 @@ STATUSPRINT:
     MOVE.B  (kStdStatus+3),D0        ; Fourth status byte to D0
     ANDI.B  #$0F,D0                  ; Preserve only the failed retry count
     MOVE.B  D0,-(A7)                 ; Onto the stack for printing
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,endl  ; Print failed retry count
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx   ; Print failed retry count
     MOVE.L  (A7)+,D0                 ; Restore D0
     RTS                              ; Back to the caller
 
@@ -276,10 +276,11 @@ _SPAREPRINTPR:
     TST.B   zSparesInUse
     BNE.S   .s0
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO '>
-.s0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BLOCKS SPARED'>,endl
+.s0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BLOCKS SPARED'>
     CLR.W   D0                       ; Blank D0 word for DBRA below
     MOVE.B  zSparesInUse,D0          ; Spare count into D0
     BEQ     .s3                      ; No spares? Skip to consume terminator
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; CR before spare table starts
     SUBQ.B  #1,D0                    ; Subtract 1 to make D0 a loop iterator
 .s1 m_cp3b  A0,D1                    ; Next spared sector into D1...
     MOVE.L  D1,-(A7)                 ; ...and onto the stack
@@ -289,26 +290,27 @@ _SPAREPRINTPR:
 .s2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,3x  ; Print space and entry
     ADDQ.L  #3,A0                    ; On to the next spare table entry
     DBRA    D0,.s1                   ; Iterate till done with spares
-    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Follow table print with a CR
 
     ; Check that the spare table ends with an $FFFFFF entry.
 .s3 m_cp3b  A0,D1                    ; Get what should be the terminator
     CMP.L   #$00FFFFFF,D1            ; Is it the terminator?
     BEQ     .s4                      ; Yes, carry on
     MOVE.L  D1,-(A7)                 ; No, get ready to print it
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'SPARE TABLE ENDS WITH '>,3x
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' AND NOT FFFFFF? ODD...'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SPARE TABLE ENDS WITH '>,3x
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' AND NOT FFFFFF? ODD...'>
 .s4 ADDQ.L  #3,A0                    ; Advance to the bad block table
 
     ; Print table of bad blocks.
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; CR before bad block section
     TST.B   zBadBlocks
     BNE.S   .b0
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'NO '>
-.b0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCKS'>,endl
+.b0 mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCKS'>
     CLR.W   D0                       ; Blank D0 word for DBRA below
     MOVE.B  zBadBlocks,D0            ; Bad block count into D0
     BEQ     .b3                      ; No bad blocks? Skip to consume terminator
-    SUBQ.B  #1,D0                    ; Subtract 1 to make it a loop iterator
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; CR before bad blocks table starts
+    SUBQ.B  #1,D0                    ; Subtract 1 to make D0 a loop iterator
 .b1 m_cp3b  A0,D1                    ; Next bad block into D1...
     MOVE.L  D1,-(A7)                 ; ...and onto the stack
     CMPI.W  #(kFirstCol+56),kCrtCol  ; Do we need a CR?
@@ -317,15 +319,14 @@ _SPAREPRINTPR:
 .b2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,3x  ; Print space and entry
     ADDQ.L  #3,A0                    ; On to the next bad block table entry
     DBRA    D0,.b1                   ; Iterate till done with bad blocks
-    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Follow table print with a CR
 
     ; Check that the bad block tabel ends with an $FFFFFF entry.
 .b3 m_cp3b  A0,D1                    ; Get what should be the terminator
     CMP.L   #$00FFFFFF,D1            ; Is it the terminator?
     BEQ     .rt                      ; Yes, carry on
     MOVE.L  D1,-(A7)                 ; No, get ready to print it
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'BAD BLOCK TABLE ENDS WITH '>,3x
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' AND NOT FFFFFF? ODD...'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'BAD BLOCK TABLE ENDS WITH '>,3x
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' AND NOT FFFFFF? ODD...'>
 
 .rt RTS                              ; Back to SPAREPRINT's caller
 
@@ -486,7 +487,7 @@ _SPAREPRINTWI:
     LSL.W   #8,D0                    ; Shift it to the MSB location
     MOVE.B  (A1)+,D0                 ; LSB of checksum into place
     MOVE.W  D0,-(A7)                 ; Checksum onto stack for printing
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'ENTIRE RECORD CHECKSUM-'>,hx,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'ENTIRE RECORD CHECKSUM-'>,hx
 
 .rt RTS                              ; Return to caller
 

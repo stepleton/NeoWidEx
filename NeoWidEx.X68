@@ -61,7 +61,9 @@ INIT:
 
     ; ## 3. Main user-interface loop ##
 UILOOP:
-    LEA     sMainMenu,A3             ; Point A3 to main menu strings
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol
+
+.lp LEA     sMainMenu,A3             ; Point A3 to main menu strings
     JSR     MENU                     ; Draw menu and get the user's choice
 
     CMPI.B  #kKeyCode1,D0            ; Recognised key codes trigger jumps...
@@ -81,7 +83,7 @@ UILOOP:
     CMPI.B  #kKeyCode8,D0
     BEQ.S   .m8
 
-    BRA.S   UILOOP                   ; Get next user command
+    BRA.S   .lp                      ; Unrecognised choice; wait for user again
 
     ; Main loop option 1: Show the status bytes from the last command
 .m1 BSR     STATUSPRINT
@@ -105,11 +107,11 @@ UILOOP:
 
     ; Main loop option 6: Print spare table
 .m6 BSR     SPAREPRINT
-    BRA.S   UILOOP
+    BRA     UILOOP
 
     ; Main loop option 7: Reset the servo
 .m7 BSR     CMD_Reset_Servo
-    BRA.S   UILOOP
+    BRA     UILOOP
 
     ; Main loop option 8: Show thanks
 .m8 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
@@ -135,10 +137,10 @@ UILOOP:
 RAWPRINT:
     mResetP                          ; Reset paging
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DATA FROM LAST READ ---'>
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'RAW TAG DATA'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW TAG DATA'>
     LEA     zSectorTag,A0
     mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#5,endl
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SECTOR DATA'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW SECTOR DATA'>
     LEA     zSectorData,A0
     mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#128,endl
     RTS

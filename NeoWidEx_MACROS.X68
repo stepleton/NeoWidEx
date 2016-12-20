@@ -260,8 +260,16 @@ mPrtStr     MACRO
     ;       not yield a blank line if the screen is already full. To force a
     ;       blank line, print a $0D character instead.
 mPrtCr      MACRO
-      ADDI.W  #kCharHeight,\1
-      MOVE.W  \3,\2
+      MOVEM.L D4-D6/A6,-(A7)         ; Save register contents
+      MOVE.W \1,D5                   ; First line row (pixels)
+      MOVE.W \2,D6                   ; First line first column (chars/bytes)
+              IFNC '\3','D4'
+      MOVE.W \3,D4                   ; Next line first column (chars/bytes)
+              ENDC
+      BSR.W   NEWLINE                ; Invoke newline printer
+      MOVE.W  D5,\1                  ; Copy new row to row storage
+      MOVE.W  D6,\2                  ; Copy new column to column storage
+      MOVEM.L (A7)+,D4-D6/A6         ; Restore register contents
             ENDM
 
     ; mPrtCrP -- Like mPrtCr, but pauses after each full screen
@@ -293,7 +301,7 @@ mPrtCrP     MACRO
               IFNC '\3','D4'
       MOVE.W \3,D4                   ; Next line first column (chars/bytes)
               ENDC
-      BSR.W   PAGEDNEWLINE           ; Invoke paging newline calculator
+      BSR.W   PAGEDNEWLINE           ; Invoke paging newline printer
       MOVE.W  D5,\1                  ; Copy new row to row storage
       MOVE.W  D6,\2                  ; Copy new column to column storage
       MOVEM.L (A7)+,D4-D6/A6         ; Restore register contents
@@ -487,7 +495,8 @@ mMemCpy     MACRO
     ;   The address register specified in \4 will not be restored to its
     ;       original value after invoking mDump.
 mDump       MACRO
-      mPrtLit kCrtRow,kCrtCol,#kFirstCol,export,<'  '>   ; First line indent
+      mPrint  kCrtRow,kCrtCol,#kFirstCol,\6,<'  '>
+      ;mPrtLit kCrtRow,kCrtCol,#kFirstCol,export,<'  '>   ; First line indent
             IFNC '\5','D0'
       CLR.W   D0                     ; Clear D0 word in prep to be an iterator
       MOVE.B  \5,D0                  ; Number of items to dump into D0
@@ -502,10 +511,9 @@ mDump       MACRO
             IFC '\0','L'
       m_dlp.L \1,\2,\3,\4,\6,56      ; Inner loop (for longs)
             ENDC
-      mPrint  \1,\2,\3,\6            ; Done with items, so new line
+      ;mPrint  \1,\2,\3,\6            ; Done with items, so new line
             ENDM
 
-      ;mDlp    kCrtRow,kCrtCol,kFirstCol,addreg,qpendl,margin
     ; m_dlp -- Implements the loop inside mDump
     ; Args:
     ;   \1: pixel row of the dump text's first line

@@ -220,9 +220,10 @@ _COPYIN:
     ; Args:
     ;   (none) (uses zWIOError)
     ; Notes:
-    ;   (none)
+    ;   Error text is preceded (but not followed) by an endl.
 WIDGETPERROR:
     MOVEM.L A0/D0,-(A7)              ; Save used registers to stack
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl  ; Preceding all subsequent output
     MOVE.B  zWIOError,D0             ; Copy error to D0
     BEQ.S   .ok                      ; Wait, there's no error, declare victory!
     LEA     sWIOErrStrings,A0        ; Point A0 to the first error string
@@ -234,16 +235,15 @@ WIDGETPERROR:
     BNE.S   .il                      ; Not at the end yet; keep scanning
     BRA.S   .ol                      ; At the next string, start from the top
 
-.ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<'OPERATION SUCCESSFUL.'>,endl
+.ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<'OPERATION SUCCESSFUL.'>
     BRA     .rt                      ; Skip ahead to return to caller
 .ue MOVE.B  zWIOError,-(A7)          ; Unusual error code on stack to print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'AN UNKNOWN ERROR WITH CODE '>,hhx
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' OCCURRED.'>,endl
-    BRA.S   .sr                      ; Skip ahead to return to caller
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' OCCURRED.'>
+    BRA.S   .rt                      ; Skip ahead to return to caller
 .ke MOVE.L  A0,-(A7)                 ; Error string address on stack to print
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,s,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,s
 
-.sr mPrint  kCrtRow,kCrtCol,#kFirstCol,<'FULL STATUS MAY HELP DEBUG.'>,endl
 .rt MOVEM.L (A7)+,A0/D0              ; Restore used registers from stack
     RTS                              ; Back to the caller
 

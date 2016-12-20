@@ -191,6 +191,32 @@ BSUBDISPMSG:
 .rt MOVE.L  (A7)+,D0                 ; Restore D0 contents
     RTS
 
+    ; NEWLINE -- move to next line
+    ; Args:
+    ;   D4: character column of the next line's first character
+    ;   D5: pixel row of the string's first line (will be updated)
+    ;   D6: current character column (will be updated)
+    ; Notes:
+    ;   It seems the only reliable way to get a newline in the monitor is to
+    ;       print an $0D. Manipulating in-memory cursor position directly (i.e.
+    ;       simply changing the values in kCrtRow and kCrtCol) will move the
+    ;       cursor as intended, but if the screen is already full, this action
+    ;       will not scroll the screen up on its own. Only when new text is
+    ;       printed do the boot ROM display routines discover that the row
+    ;       argument is out-of-bounds and scroll the text to create a new,
+    ;       empty line. This seems adequate at first blush, but the boot ROM
+    ;       will only scroll the screen one line no matter how far
+    ;       out-of-bounds the row argument is, so attempts to advance forward
+    ;       two lines can only ever scroll the screen one line. So, we print
+    ;       $0D instead.
+NEWLINE:
+    MOVEM.L A3,-(A7)                 ; Save A3 register
+    MOVEA.L #.s0,A3                  ; Point A3 at "\r" string...
+    JSR     kDispMsg                 ; ...and print it
+    MOVEM.L (A7)+,A3                 ; Restore A3 register
+    RTS                              ; Back to caller
+.s0 DC.B    $0D,0
+
     ; PAGEDNEWLINE -- move to next line, paging the display if necessary
     ; Args:
     ;   D4: character column of the next line's first character
@@ -217,8 +243,7 @@ BSUBDISPMSG:
     ;       then `mPrtLit kCrtRow,kCrtCol,#kFirstCol,no_export,<' '>`.
 PAGEDNEWLINE:
     MOVEM.L D0/A3,-(A7)              ; Save registers we might use
-    ADDI.W  #kCharHeight,D5          ; Advance row to the next line
-    MOVE.W  D4,D6                    ; Reset column to the left margin
+    BSR     NEWLINE                  ; Print newline
     CLR.B   zStopPaging              ; Clear "user pressed q" byte
     SUBQ.B  #1,zLineCount            ; Decrement lines left until time to pause
     BHI.S   .rt                      ; Still have some? Skip ahead to return
@@ -255,7 +280,7 @@ PAGEDRTS:
     TST.B   zStopPaging              ; Did the user once press 'q' while paging?
     BEQ.S   .rt                      ; No, skip ahead to return
     ADDQ.L  #4,A7                    ; Yes, drop caller's return address
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'...STOPPED...'>,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'...STOPPED...'>
 .rt RTS                              ; Back to caller or caller's caller...
 
     ; HEXB2STR -- Convert D1 byte to a null-terminated hex string at zNumToStr
@@ -383,7 +408,7 @@ sWelcome:                            ; Welcome text for NeoWidEx
     DC.B    $0D
     DC.B    'OTHERWISE... WELCOME... PLEASE SELECT A COMMAND',$0D
     DC.B    $0D
-    DC.B    '        / ALL NUMBERS ARE HEXADECIMAL /',$0D,0
+    DC.B    '        / ALL NUMBERS ARE HEXADECIMAL /',0
 
 sThanks:
     DC.B    $0D
@@ -396,7 +421,7 @@ sThanks:
     DC.B    $0D
     DC.B    'THEIR WORK MADE NEOWIDEX A LEISURE-TIME PROJECT',$0D
     DC.B    $0D
-    DC.B    'YOU ............................. YOUR INTEREST',$0D,0
+    DC.B    'YOU ............................. YOUR INTEREST',0
 
 
 ** (Back to the code section) **
