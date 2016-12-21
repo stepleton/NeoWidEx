@@ -37,6 +37,12 @@ kKeyCode6   EQU  $E1                 ; Key code for the 6 key
 kKeyCode7   EQU  $E2                 ; Key code for the 7 key
 kKeyCode8   EQU  $E3                 ; Key code for the 8 key
 kKeyCode9   EQU  $D0                 ; Key code for the 9 key
+kKeyCodeA   EQU  $F0                 ; Key code for the A key
+kKeyCodeB   EQU  $EE                 ; Key code for the B key
+kKeyCodeC   EQU  $ED                 ; Key code for the C key
+kKeyCodeD   EQU  $FB                 ; Key code for the D key
+kKeyCodeE   EQU  $E0                 ; Key code for the E key
+kKeyCodeF   EQU  $E9                 ; Key code for the F key
 
 kWIONoDisk  EQU  $01                 ; WIDGETIO error: no disk present
 kWIOBusy    EQU  $02                 ; WIDGETIO error: disk won't deassert BSY

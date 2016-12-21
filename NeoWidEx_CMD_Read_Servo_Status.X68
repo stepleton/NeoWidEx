@@ -336,9 +336,6 @@ zServoStatus8:
 * NeoWidEx Read_Servo_Status strings =======================
     SECTION kSecStrings
 
-sStdStatusCommand:
-    DC.B    $10,$01,$00              ; Command: retrieve standard status
-
 sServoStatus1Btmap1:
     DC.B    $0D
     DC.B    '                -BYTE 0-                         -BYTE 1-',$0D

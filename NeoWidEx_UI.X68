@@ -370,6 +370,12 @@ dMenuIds:
     DC.B    kKeyCode7                ; Same, for 7
     DC.B    kKeyCode8                ; Same, for 8
     DC.B    kKeyCode9                ; Same, for 9
+    DC.B    kKeyCodeA                ; Same, for A
+    DC.B    kKeyCodeB                ; Same, for B
+    DC.B    kKeyCodeC                ; Same, for C
+    DC.B    kKeyCodeD                ; Same, for D
+    DC.B    kKeyCodeE                ; Same, for E
+    DC.B    kKeyCodeF                ; Same, for F
     
     DS.W    0                        ; Force even alignment for following data
 

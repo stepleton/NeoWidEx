@@ -82,51 +82,79 @@ UILOOP:
     BEQ.S   .m8
     CMPI.B  #kKeyCode9,D0
     BEQ     .m9
+    CMPI.B  #kKeyCodeA,D0
+    BEQ     .ma
+    CMPI.B  #kKeyCodeB,D0
+    BEQ     .mb
+    CMPI.B  #kKeyCodeC,D0
+    BEQ     .mc
+    CMPI.B  #kKeyCodeD,D0
+    BEQ     .md
 
     BRA.S   UILOOP                   ; Unrecognised choice; wait for user again
 
     ; Main loop option 1: Show the status bytes from the last command
 .m1 BSR     _UINEWLINE
     BSR     STATUSPRINT
-    BRA.S   UILOOP
+    BRA     UILOOP
 
     ; Main loop option 2: Print raw tag and sector data
 .m2 BSR     _UINEWLINE
     BSR     RAWPRINT
-    BRA.S   UILOOP
+    BRA     UILOOP
 
     ; Main loop option 3: Get Widget info
 .m3 BSR     _UINEWLINE
     BSR     WINFOPRINT
-    BRA.S   UILOOP
+    BRA     UILOOP
 
     ; Main loop option 4: Print full Widget controller status
 .m4 BSR     _UINEWLINE
     BSR     CMD_Read_Controller_Status
-    BRA.S   UILOOP
+    BRA     UILOOP
 
     ; Main loop option 5: Print full Widget servo status
 .m5 BSR     _UINEWLINE
     BSR     CMD_Read_Servo_Status
-    BRA.S   UILOOP
+    BRA     UILOOP
 
     ; Main loop option 6: Print spare table
 .m6 BSR     _UINEWLINE
     BSR     SPAREPRINT
     BRA     UILOOP
 
-    ; Main loop option 7: Reset the servo
+    ; Main loop option 7: Toggle recovery state
 .m7 BSR     _UINEWLINE
+    BSR     CMD_Set_Recovery
+    BRA     UILOOP
+
+    ; Main loop option 8: Perform a surface scan
+.m8 BSR     _UINEWLINE
+    BSR     CMD_Scan
+    BRA     UILOOP
+
+    ; Main loop option 9: Soft-reset the Widget
+.m9 BSR     _UINEWLINE
+    BSR     CMD_Soft_Reset
+    BRA     UILOOP
+
+    ; Main loop option 10: Reset the servo
+.ma BSR     _UINEWLINE
     BSR     CMD_Reset_Servo
     BRA     UILOOP
 
-    ; Main loop option 8: Show thanks
-.m8 BSR     _UINEWLINE
+    ; Main loop option 11: Park heads
+.mb BSR     _UINEWLINE
+    BSR     CMD_Send_Park
+    BRA     UILOOP
+
+    ; Main loop option 12: Show thanks
+.mc BSR     _UINEWLINE
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
     BRA     UILOOP
 
-    ; Main loop option 9: Quit and return to the ROM
-.m9 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    ; Main loop option 12: Quit and return to the ROM
+.md mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
 
@@ -161,11 +189,19 @@ RAWPRINT:
 
     INCLUDE NeoWidEx_IO.X68
 
-    INCLUDE NeoWidEx_CMD_Reset_Servo.X68
-
     INCLUDE NeoWidEx_CMD_Read_Controller_Status.X68
 
     INCLUDE NeoWidEx_CMD_Read_Servo_Status.X68
+
+    INCLUDE NeoWidEx_CMD_Set_Recovery.X68
+
+    INCLUDE NeoWidEx_CMD_Soft_Reset.X68
+
+    INCLUDE NeoWidEx_CMD_Send_Park.X68
+
+    INCLUDE NeoWidEx_CMD_Reset_Servo.X68
+
+    INCLUDE NeoWidEx_CMD_Scan.X68
 
     PAGE
 * NeoWidEx numerical data ==================================
@@ -196,9 +232,13 @@ sMainMenu:
     DC.B    'FULL STATUS   4',0
     DC.B    'SERVO STATUS  5',0
     DC.B    'SPARE TABLE   6',0
-    DC.B    'RESET SERVO   7',0
-    DC.B    'THANKS        8',0
-    DC.B    'QUIT          9',0
+    DC.B    'FLIP RECOVERY 7',0
+    DC.B    'SCAN          8',0
+    DC.B    'SOFT RESET    9',0
+    DC.B    'RESET SERVO   A',0
+    DC.B    'PARK HEADS    B',0
+    DC.B    'THANKS        C',0
+    DC.B    'QUIT          D',0
     DC.B    0                        ; End of menu.
 
 
@@ -216,9 +256,6 @@ zSectorData:
 
     ; Designates NEOWIDEX as the beginning of the program.
     END    NEOWIDEX
-
-
-
 
 
 *~Font name~Courier New~

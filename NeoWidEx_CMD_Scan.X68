@@ -1,12 +1,12 @@
 *-----------------------------------------------------------
-* Title      : NeoWidEx_CMD_Reset_Servo
+* Title      : NeoWidEx_CMD_Scan
 * Written by : Tom Stepleton
-* Date       : XX November 2016
+* Date       : XX December 2016
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by
 *   Patrick Schäfer's UsbWidEx hardware tool.
-*   -- This file: issues the servo reset command.
+*   -- This file: issues the surface scan command.
 *      Equates from NeoWidEx_DEFS must be defined.
 *      Macros from NeoWidEx_MACROS must be defined.
 *      Resources from NeoWidEx_IO must be defined.
@@ -14,19 +14,19 @@
 *-----------------------------------------------------------
 
 
-* NeoWidEx Reset_Servo code ================================
+* NeoWidEx Scan code =======================================
 
-    ; CMD_Reset_Servo -- Attempt the Reset_Servo command
+    ; CMD_Scan -- Attempt the Scan command
     ; Args:
     ;   (none)
     ; Notes:
     ;   Trashes D0/A0.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
-CMD_Reset_Servo:
+CMD_Scan:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- RESET SERVO ---'>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SCAN ---'>
     MOVE.B  #2,D0                    ; The command is two bytes long
-    LEA     sCmdResetServo,A0        ; Location of the command template in RAM
+    LEA     sCmdScan,A0              ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
     CLR.W   zWIOReadLen              ; There are no bytes to read
     CLR.W   zWIOWriteLen             ; There are no bytes to write
@@ -39,11 +39,11 @@ CMD_Reset_Servo:
 
 
     PAGE
-* NeoWidEx Reset_Servo strings ==============================
+* NeoWidEx Scan strings =====================================
     SECTION kSecStrings
 
-sCmdResetServo:
-    DC.B    $10,$12                  ; Servo reset command (it's short!)
+sCmdScan:
+    DC.B    $10,$13                  ; Scan command (it's short!)
 
 
 ** (Back to the code section) **
