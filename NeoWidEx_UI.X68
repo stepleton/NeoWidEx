@@ -415,6 +415,7 @@ sThanks:
     DC.B    '                 --- THANKS ---',$0D,$0D
     DC.B    'DR. PATRICK SCHAEFER .. REVERSE ENGINEERING ETC.',$0D
     DC.B    'RAY ARACHELIAN ............ THE LISAEM EMULATOR',$0D
+    DC.B    'STEVE CHAMBERLIN ................... FLOPPY EMU',$0D
     DC.B    'JAMES MACPHAIL ........................ BLU ETC.',$0D
     DC.B    'BITSAVERS.ORG ........... CRUCIAL DOCUMENTATION',$0D
     DC.B    'LISALIST ...................... FOR A COMMUNITY',$0D

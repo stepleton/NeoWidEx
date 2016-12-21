@@ -10,7 +10,7 @@
 
 ; NOTES TO SELF:
 ;   Stack: from $480 to $3E8 --- that's 152 bytes, or 38 longs!
-
+  
 
     PAGE
 * NeoWidEx Equates =========================================
@@ -61,9 +61,7 @@ INIT:
 
     ; ## 3. Main user-interface loop ##
 UILOOP:
-    mPrtCr  kCrtRow,kCrtCol,#kFirstCol
-
-.lp LEA     sMainMenu,A3             ; Point A3 to main menu strings
+    LEA     sMainMenu,A3             ; Point A3 to main menu strings
     JSR     MENU                     ; Draw menu and get the user's choice
 
     CMPI.B  #kKeyCode1,D0            ; Recognised key codes trigger jumps...
@@ -82,45 +80,80 @@ UILOOP:
     BEQ.S   .m7
     CMPI.B  #kKeyCode8,D0
     BEQ.S   .m8
+    CMPI.B  #kKeyCode9,D0
+    BEQ     .m9
 
-    BRA.S   .lp                      ; Unrecognised choice; wait for user again
+    BRA.S   UILOOP                   ; Unrecognised choice; wait for user again
 
     ; Main loop option 1: Show the status bytes from the last command
-.m1 BSR     STATUSPRINT
+.m1 BSR     _UINEWLINE
+    BSR     STATUSPRINT
     BRA.S   UILOOP
 
     ; Main loop option 2: Print raw tag and sector data
-.m2 BSR     RAWPRINT
+.m2 BSR     _UINEWLINE
+    BSR     RAWPRINT
     BRA.S   UILOOP
 
     ; Main loop option 3: Get Widget info
-.m3 BSR     WINFOPRINT
+.m3 BSR     _UINEWLINE
+    BSR     WINFOPRINT
     BRA.S   UILOOP
 
     ; Main loop option 4: Print full Widget controller status
-.m4 BSR     CMD_Read_Controller_Status
+.m4 BSR     _UINEWLINE
+    BSR     CMD_Read_Controller_Status
     BRA.S   UILOOP
 
     ; Main loop option 5: Print full Widget servo status
-.m5 BSR     CMD_Read_Servo_Status
+.m5 BSR     _UINEWLINE
+    BSR     CMD_Read_Servo_Status
     BRA.S   UILOOP
 
     ; Main loop option 6: Print spare table
-.m6 BSR     SPAREPRINT
+.m6 BSR     _UINEWLINE
+    BSR     SPAREPRINT
     BRA     UILOOP
 
     ; Main loop option 7: Reset the servo
-.m7 BSR     CMD_Reset_Servo
+.m7 BSR     _UINEWLINE
+    BSR     CMD_Reset_Servo
     BRA     UILOOP
 
     ; Main loop option 8: Show thanks
-.m8 mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+.m8 BSR     _UINEWLINE
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
     BRA     UILOOP
 
     ; Main loop option 9: Quit and return to the ROM
 .m9 mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
+
+    ; _UINEWLINE -- Just prints a newline
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Because BSR _UINEWLINE is smaller than a macro.
+_UINEWLINE:
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Print newline to space output
+    RTS                              ; Back to caller
+
+    ; RAWPRINT -- Display hex dump of data from last read
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes A0.
+RAWPRINT:
+    mResetP                          ; Reset paging
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DATA FROM LAST READ ---'>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW TAG DATA'>
+    LEA     zSectorTag,A0
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#5,endl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW SECTOR DATA'>
+    LEA     zSectorData,A0
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#128,endl
+    RTS                              ; Back to caller
 
     INCLUDE NeoWidEx_WIDGETINFO.X68
 
@@ -133,17 +166,6 @@ UILOOP:
     INCLUDE NeoWidEx_CMD_Read_Controller_Status.X68
 
     INCLUDE NeoWidEx_CMD_Read_Servo_Status.X68
-
-RAWPRINT:
-    mResetP                          ; Reset paging
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DATA FROM LAST READ ---'>
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW TAG DATA'>
-    LEA     zSectorTag,A0
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#5,endl
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW SECTOR DATA'>
-    LEA     zSectorData,A0
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#128,endl
-    RTS
 
     PAGE
 * NeoWidEx numerical data ==================================
@@ -194,6 +216,8 @@ zSectorData:
 
     ; Designates NEOWIDEX as the beginning of the program.
     END    NEOWIDEX
+
+
 
 
 

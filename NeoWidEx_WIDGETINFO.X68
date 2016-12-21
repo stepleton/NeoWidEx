@@ -471,15 +471,15 @@ _SPAREPRINTWI:
     BLO     .s0                      ;   No, on to the next
 
     ; Print raw head pointer array data
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW HEAD POINTER ARRAY'>,qpendl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW HEAD POINTER ARRAY'>
     mDump.B kCrtRow,kCrtCol,#kFirstCol,A0,zSpares,qpendl
 
     ; Print raw spare table data.
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'RAW SPARE TABLE DATA'>,qpendl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'RAW SPARE TABLE DATA'>
     mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,zSpares,qpendl
 
     ; Print interleave map
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'INTERLEAVE MAP'>,qpendl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'INTERLEAVE MAP'>
     mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,zSectors,qpendl
 
     ; Print overall checksum for this sector
@@ -487,7 +487,7 @@ _SPAREPRINTWI:
     LSL.W   #8,D0                    ; Shift it to the MSB location
     MOVE.B  (A1)+,D0                 ; LSB of checksum into place
     MOVE.W  D0,-(A7)                 ; Checksum onto stack for printing
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'ENTIRE RECORD CHECKSUM-'>,hx
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'ENTIRE RECORD CHECKSUM-'>,hx
 
 .rt RTS                              ; Return to caller
 
@@ -778,6 +778,7 @@ sPointerVisited:
 
 ** (Back to the code section) **
     SECTION kSecCode
+
 
 
 

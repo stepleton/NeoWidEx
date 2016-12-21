@@ -28,7 +28,7 @@ CMD_Read_Controller_Status:
     ; First, retrieve and print all controller status longs
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- ALL STATUS LONGS ---'>
     BSR     _READALLCTRLRSTATUS      ; Retrieve all controller status longs
-
+    
     MOVE.B  #$00,D0                  ; We will print statuses in forward order
     MOVEA.L #zStatus0,A0             ; A0 points to current status storage entry
     MOVEA.L #dStatusDescTable,A1     ; A1 points to current desc table entry
@@ -106,21 +106,29 @@ CMD_Read_Controller_Status:
 
     RTS                              ; Back to caller
 
-.ph MOVE.L  A0,-(A7)
+    ; .ph -- CMD_Read_Controller_Status helper: print title and raw hex bytes
+    ; Args:
+    ;   A0: address of bitmap display title string
+    ;   D0: long whose hex bytes will be printed below the title
+    ; Notes:
+    ;   Prints the title and hex dump of status long that shows above certain
+    ;       status bitmaps.
+.ph MOVE.L  A0,-(A7)                 ; Title to stack for printing
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- '>,s,<' ---'>
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'                          '>
-    MOVE.B  D0,-(A7)
+    ROL.L   #8,D0                    ; Get ready to move MSByte to stack...
+    MOVE.B  D0,-(A7)                 ; ...then move, then print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx
-    LSR.L   #8,D0
-    MOVE.B  D0,-(A7)
+    ROL.L   #8,D0                    ; Now secondmost significant byte...
+    MOVE.B  D0,-(A7)                 ; ...to stack, then print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,hhx
-    LSR.L   #8,D0
-    MOVE.B  D0,-(A7)
+    ROL.L   #8,D0                    ; Now second-least significant byte...
+    MOVE.B  D0,-(A7)                 ; ...to stack, then print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,hhx
-    LSR.L   #8,D0
-    MOVE.B  D0,-(A7)
+    ROL.L   #8,D0                    ; At last, LSByte...
+    MOVE.B  D0,-(A7)                 ; ...to stack, then print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<' '>,hhx
-    RTS
+    RTS                              ; Back to caller
 
 
     ; _READALLCTRLRSTATUS -- Reads all 8 controller status longs to zStatusX
@@ -145,7 +153,7 @@ _READALLCTRLRSTATUS:
     SUBQ.B  #1,D0                    ; Next status command into D0
     BPL     .lp                      ; Repeat loop while status subcommand >= 0
     MOVEM.W (A7)+,D0                 ; Restore data register used from stack
-    MOVEM.W (A7)+,A0-A1              ; Restore address registers used from stack
+    MOVEM.L (A7)+,A0-A1              ; Restore address registers used from stack
     RTS                              ; Back to caller
 
     ; Tiny subroutine that _READALLCONTROLLERSTATUS uses to send the command
@@ -280,6 +288,7 @@ sExp2RegistersBitmap:
 
 ** (Back to the code section) **
     SECTION kSecCode
+
 
 
 *~Font name~Courier New~

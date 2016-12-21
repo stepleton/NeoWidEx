@@ -99,7 +99,7 @@ mPrtMem     MACRO
     ; Notes:
     ;   Works the same as mPrtMem, but whenever an ASCII character in the range
     ;       '_'..'~' is encountered, the bit value of bit 0..31 (respectively)
-    ;       of D1 is substituted in place of the character (as '0' or '1').
+    ;       of \6 is substituted in place of the character (as '0' or '1').
     ;   String can be multi-line, with lines split by carriage return ($0D).
     ;   If the "position export" keyword is equal to "export" (no quotes), the
     ;       row and column positions where a hypothetical character after the
