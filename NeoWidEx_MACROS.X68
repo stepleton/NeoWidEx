@@ -187,7 +187,7 @@ mPrtHxW     MACRO
       BSR.W   HEXW2STR               ; Convert word to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
-      ADDQ.L  #2,A7                  ; Drop byte from stack
+      ADDQ.L  #2,A7                  ; Drop word from stack
             ENDM
 
     ; mPrtHx3 -- Print a hexadecimal representation of a 3-byte int to display
@@ -206,7 +206,7 @@ mPrtHx3     MACRO
       BSR.W   HEX3B2STR              ; Convert long to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
-      ADDQ.L  #4,A7                  ; Drop byte from stack
+      ADDQ.L  #4,A7                  ; Drop long from stack
             ENDM
 
     ; mPrtHxL -- Print a hexadecimal representation of a long to the display
@@ -225,7 +225,7 @@ mPrtHxL     MACRO
       BSR.W   HEXL2STR               ; Convert long to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
-      ADDQ.L  #4,A7                  ; Drop byte from stack
+      ADDQ.L  #4,A7                  ; Drop long from stack
             ENDM
 
     ; mPrtStr -- Print a string pointed to by the top stack value to the display
@@ -472,7 +472,33 @@ mMemCpy     MACRO
 .c\@  MOVE.B   (A0)+,(A1)+           ; Copy next byte from source to dest
       DBRA     D0,.c\@               ; Loop until done
       MOVEM.W  (A7)+,D0              ; Restore data register
-      MOVEM.L  (A7)+,A0-A1           ; Restore address register
+      MOVEM.L  (A7)+,A0-A1           ; Restore address registers
+            ENDM
+
+    ; mMemSet -- Set bytes in a contiguous memory region to one value
+    ; Args:
+    ;   \1: Byte to fill the memory region with
+    ;   \2: Starting destination address
+    ;   \3: Number of bytes to set
+    ; Notes:
+    ;   Behaviour undefined if destination memory region overlaps source byte.
+mMemSet     MACRO
+      MOVEM.L A0,-(A7)               ; Save address register
+      MOVEM.W D0-D1,-(A7)            ; Save data registers
+            IFNC '\1','D0'
+      MOVE.B   \1,D0                 ; Copy source byte to D0
+            ENDC
+            IFNC '\2','A0'
+      MOVEA.L  \2,A0                 ; Copy destination address to A0
+            ENDC
+            IFNC '\3','D1'
+      MOVE.W   \3,D1                 ; Copy byte count to D1
+            ENDC
+      SUBQ.L   #1,D1                 ; Decrement byte count by 1
+.c\@  MOVE.B   D0,(A0)+              ; Copy next byte from source to dest
+      DBRA     D1,.c\@               ; Loop until done
+      MOVEM.W  (A7)+,D0-D1           ; Restore data register
+      MOVEM.L  (A7)+,A0              ; Restore address register
             ENDM
 
     ; mDump -- Print contiguous bytes, words, or longs, separated by spaces
@@ -496,7 +522,6 @@ mMemCpy     MACRO
     ;       original value after invoking mDump.
 mDump       MACRO
       mPrint  kCrtRow,kCrtCol,#kFirstCol,\6,<'  '>
-      ;mPrtLit kCrtRow,kCrtCol,#kFirstCol,export,<'  '>   ; First line indent
             IFNC '\5','D0'
       CLR.W   D0                     ; Clear D0 word in prep to be an iterator
       MOVE.B  \5,D0                  ; Number of items to dump into D0
@@ -511,7 +536,6 @@ mDump       MACRO
             IFC '\0','L'
       m_dlp.L \1,\2,\3,\4,\6,56      ; Inner loop (for longs)
             ENDC
-      ;mPrint  \1,\2,\3,\6            ; Done with items, so new line
             ENDM
 
     ; m_dlp -- Implements the loop inside mDump

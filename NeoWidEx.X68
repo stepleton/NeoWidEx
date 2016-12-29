@@ -24,11 +24,11 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $6000                    ; Various numerical data items live here
+    ORG     $7000                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $6100                    ; Structured scratch space
+    ORG     $7100                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $6200                    ; Program strings bring up the rear
+    ORG     $7200                    ; Program strings bring up the rear
     SECTION kSecCode
 
 
@@ -65,21 +65,21 @@ UILOOP:
     JSR     MENU                     ; Draw menu and get the user's choice
 
     CMPI.B  #kKeyCode1,D0            ; Recognised key codes trigger jumps...
-    BEQ.S   .m1                      ; ...to menu-option handling routines
+    BEQ     .m1                      ; ...to menu-option handling routines
     CMPI.B  #kKeyCode2,D0
-    BEQ.S   .m2
+    BEQ     .m2
     CMPI.B  #kKeyCode3,D0
-    BEQ.S   .m3
+    BEQ     .m3
     CMPI.B  #kKeyCode4,D0
-    BEQ.S   .m4
+    BEQ     .m4
     CMPI.B  #kKeyCode5,D0
-    BEQ.S   .m5
+    BEQ     .m5
     CMPI.B  #kKeyCode6,D0
-    BEQ.S   .m6
+    BEQ     .m6
     CMPI.B  #kKeyCode7,D0
-    BEQ.S   .m7
+    BEQ     .m7
     CMPI.B  #kKeyCode8,D0
-    BEQ.S   .m8
+    BEQ     .m8
     CMPI.B  #kKeyCode9,D0
     BEQ     .m9
     CMPI.B  #kKeyCodeA,D0
@@ -90,8 +90,10 @@ UILOOP:
     BEQ     .mc
     CMPI.B  #kKeyCodeD,D0
     BEQ     .md
+    CMPI.B  #kKeyCodeE,D0
+    BEQ     .me
 
-    BRA.S   UILOOP                   ; Unrecognised choice; wait for user again
+    BRA     UILOOP                   ; Unrecognised choice; wait for user again
 
     ; Main loop option 1: Show the status bytes from the last command
 .m1 BSR     _UINEWLINE
@@ -156,6 +158,14 @@ UILOOP:
     ; Main loop option 12: Quit and return to the ROM
 .md mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
+.me BSR     _UINEWLINE
+    LEA     sFormTest,A0
+    LEA     sFormTestPrompts,A1
+    LEA     sFormTestInitialVals,A2
+    SUBA.L  A3,A3
+    BSR     FORM
+    BRA     UILOOP
+
     ; ## 4. Subroutines etc. ##
 
     ; _UINEWLINE -- Just prints a newline
@@ -186,6 +196,8 @@ RAWPRINT:
     INCLUDE NeoWidEx_WIDGETINFO.X68
 
     INCLUDE NeoWidEx_UI.X68
+
+    INCLUDE NeoWidEx_UI_FORMS.X68
 
     INCLUDE NeoWidEx_IO.X68
 
@@ -239,6 +251,7 @@ sMainMenu:
     DC.B    'PARK HEADS    B',0
     DC.B    'THANKS        C',0
     DC.B    'QUIT          D',0
+    DC.B    'FORMTEST      E',0
     DC.B    0                        ; End of menu.
 
 

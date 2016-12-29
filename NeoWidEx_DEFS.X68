@@ -74,6 +74,8 @@ kDboxHeight EQU  20                  ; Height of dialog box in chars/bytes
 kDboxLeft   EQU  kMenuWidth+2
 kDboxTop    EQU  4*kRowBytes
 kDboxStart  EQU  kMenuStart+kDboxLeft+kDboxTop
+kDboxRow    EQU  (kDboxStart/90)+4   ; Dialog box prompt text row (pixels)
+kDboxColumn EQU  kMenuWidth+6        ; Dialog box prompt text first col. (chars)
 
 kSvcHeight  EQU  320                 ; Service mode window height in pixels
 kSvcTop     EQU  (kDboxHeight+2)*kRowBytes
@@ -118,6 +120,7 @@ kCrtCol     EQU  $00000302           ; Scratch location for text display column
 kStatFlags  EQU  $000002A2           ; Various ROM status flags
 kRectCount  EQU  $0000053A           ; Count of "active rectangles"
 
+kClearDbox  EQU  $00FE2C28           ; Erase "dialogue box" (input window)
 kClearDesk  EQU  $00FE30DA           ; Clear desktop
 kCrsrDsply  EQU  $00FE300E           ; Redisplay the mouse cursor
 kCrsrHide   EQU  $00FE2FEA           ; Hide the mouse cursor
@@ -129,6 +132,7 @@ kEjectDisk  EQU  $00FE1E56           ; Eject floppy disk
 kFindD2     EQU  $00FE20BC           ; ProFile/Widget handshake
 kGetError   EQU  $00FE26E6           ; kGetInput error bailout routine
 kGetInput   EQU  $00FE2C46           ; Get keyboard/mouse input
+kMakeDbox   EQU  $00FE31B2           ; Make a "dialogue box" (input window)
 kMakeMenu   EQU  $00FE336A           ; Make a drop-down menu
 kMakeWindow EQU  $00FE31C6           ; Make a window
 kPaintBox   EQU  $00FE3128           ; Draw a rectangle tiled with a word
