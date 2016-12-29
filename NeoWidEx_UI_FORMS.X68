@@ -129,14 +129,16 @@ FORM:
     MOVE.L  0(A4,D0.W),-(A7)         ;   Prompt string pointer onto stack
     mPrint  D1,D2,#kFirstCol,s,<'? '>    ; Print prompt into dialog box
     LSR.W   #2,D0                    ;   Restore D0: D0 /= 4
-    ; TODO: Print cursor-like marker in appropriate spot
     BSR     _FILLFIELD               ;   Print field contents into dialog box
 
+   MOVE.B #1,D3    ; D3: Cursor on the field's second nibble
+   JSR    _CURSOR  ; Show cursor
    MOVE.L D0,-(A7)
 ._ JSR    kWait4Input
    TST.B  D0
    BPL.S  ._
    MOVE.L (A7)+,D0
+   JSR    _CURSOR  ; Clear cursor
 
     BSR     _FIELDPOS                ;   Position of current field into D1,D2
     BSR     _FILLFIELD               ;   Fill in current field value
@@ -209,8 +211,9 @@ _REFRESHFORM:
     ;   A1: Address of the field rows array
     ;   A2: Address of the field columns array
     ; Notes:
-    ;   D1 is set to the field screen row for field (D0.W) in pixels; D1 is set
+    ;   D1 is set to the field screen row for field (D0.W) in pixels; D2 is set
     ;       to the field screen column for field (D0.W) in character positions.
+    ;   Trashes upper word of D1.
 _FIELDPOS:
     MOVE.B  0(A1,D0.W),D1            ; Field's relative row into D1
     MOVE.B  0(A2,D0.W),D2            ; Field's column into D2
@@ -281,6 +284,121 @@ _BLANKFIELD:
     CMP.W   D2,D3                    ; Have we reached the start of the field?
     BNE.S   .b0                      ; No, keep going
     MOVE.W  (A7)+,D3                 ; Yes, recover D3 from stack
+    RTS                              ; Back to caller
+
+
+    ; _CURSOR -- FORM helper: draw or clear a cursor underneath a field
+    ; Args:
+    ;   D0: field index, as a word in 0..3
+    ;   D1: field screen row, in pixels
+    ;   D2: field screen column, in character positions
+    ;   D3: draw/clear cursor below this nibble in the field (counts from right)
+    ;   A3: Address of the field sizes array
+    ; Notes:
+    ;   (none)
+_CURSOR:
+    MOVE.L  A0,-(A7)                 ; Save A0 to stack
+    MOVE.W  D3,-(A7)                 ; Save D3 to stack
+
+    ; D3 receives the cursor offset from the leftmost character of the field.
+    NEG.B   D3                       ; First, negate D3...
+    ADD.B   0(A3,D0.W),D3            ; ...then add twice the field width...
+    ADD.B   0(A3,D0.W),D3
+    SUBQ.B  #1,D3                    ; ...minus one, is the offset
+    EXT.W   D3                       ; Sign-extend to a word
+
+    ; Preload A0 with the number of bytes from first screen byte to the first
+    ; byte of the cursor's first row.
+    EXG.L   A0,D4                    ; We will do all of our arithmetic in D4
+    CLR.L   D4                       ; First, clear it all out
+    MOVE.W  D1,D4                    ; Copy in field screen row
+    ADD.B   #(kCharHeight-1),D4      ; Add row height so cursor is under char
+    MULU.W  #kRowBytes,D4            ; Multiply by bytes per row
+    EXG.L   D4,A0                    ; Move result to A0
+
+    ; Add column, screenbase, and offset to give A0 the top byte of the cursor.
+    ADDA.L  kScreen,A0               ; Screenbase
+    ADDA.W  D2,A0                    ; Column
+    ADDA.W  D3,A0                    ; Offset
+
+    ; XOR and advance A0 one row at a time to make a "fat underline".
+    EORI.B  #$FF,(A0)
+    ADDA.W  #kRowBytes,A0
+    EORI.B  #$FF,(A0)
+    ADDA.W  #kRowBytes,A0
+    EORI.B  #$FF,(A0)
+
+    ; All done, back to caller.
+    MOVE.W  (A7)+,D3                 ; Recover D3 from stack
+    MOVE.L  (A7)+,A0                 ; Recover A0 from stack
+    RTS                              ; Back to caller
+
+
+    ; _SETNIBBLE -- FORM helper: set a nibble in a field value
+    ; Args:
+    ;   D0: field index, as a word in 0..3
+    ;   D3: nibble to change, counting up from the LSNibble
+    ;   D4: new nibble value
+    ;   A0: Address of the field values array
+    ; Notes:
+    ;   (none)
+_SETNIBBLE:
+    MOVEM.W D0/D3,-(A7)              ; Save words of D0/D3 to stack
+    MOVE.L  D1,-(A7)                 ; Save all of D1 to stack
+    LSL.W   #2,D0                    ; Field index to long offset
+    MOVE.L  0(A0,D0.W),D1            ; Copy field value to D1
+    EXT.W   D3                       ; Nibble index from byte to word
+    LSL.W   #2,D3                    ; And convert to number of bits to rotate
+    ROR.L   D3,D1                    ; Rotate nibble to change to LSnibble
+    ANDI.B  #$F0,D1                  ; Blank out old value of nibble to change
+    OR.B    D4,D1                    ; Add in new nibble value
+    ROL.L   D3,D1                    ; Rotate nibble to change back in place
+    MOVE.L  D1,0(A0,D0.W)            ; Copy D1 back to field value
+    MOVE.L  (A7)+,D1                 ; Recover all of D1 from stack
+    MOVEM.W (A7)+,D0/D3              ; Recover words of D0/D3 from stack
+    RTS                              ; Back to caller
+
+
+    ; _CURSORLEFT -- FORM helper: move a displayed cursor leftward
+    ; Args:
+    ;   D0: field index, as a word in 0..3
+    ;   D1: field screen row, in pixels
+    ;   D2: field screen column, in character positions
+    ;   D3: draw/clear cursor below this nibble in the field (counts from right)
+    ;   A3: Address of the field sizes array
+    ; Notes:
+    ;   Assumes cursor is already drawn; clears prior to move, then redraws.
+    ;   Cursor will "wrap around" to the right side of the field.
+_CURSORLEFT:
+    JSR     _CURSOR                  ; Clear existing cursor
+    ADDQ.W  #1,D3                    ; Increment current nibble
+    CMP.B   0(A3,D0.W),D3            ; Is current nibble >= field size?
+    BLO.S   .rt                      ; No, go ahead and draw the new cursor
+    CLR.W   D3                       ; Yes, clear; current nibble=rightmost char
+.rt JSR     _CURSOR                  ; Draw the new cursor
+    RTS                              ; Back to caller
+
+
+    ; _CURSORRIGHT -- FORM helper: move a displayed cursor rightward
+    ; Args:
+    ;   D0: field index, as a word in 0..3
+    ;   D1: field screen row, in pixels
+    ;   D2: field screen column, in character positions
+    ;   D3: draw/clear cursor below this nibble in the field (counts from right)
+    ;   A3: Address of the field sizes array
+    ; Notes:
+    ;   Assumes cursor is already drawn; clears prior to move, then redraws.
+    ;   Cursor will "wrap around" to the left side of the field.
+_CURSORRIGHT:
+    JSR     _CURSOR                  ; Clear existing cursor
+    SUBQ.W  #1,D3                    ; Decrement current nibble
+    TST.W   D3                       ; Is current nibble < 0?
+    BPL.S   .rt                      ; No, go ahead and draw the new cursor
+    CLR.W   D3                       ; Yes, so clear current nibble
+    MOVE.B  0(A3,D0.W),D3            ; Size into current nibble LSByte
+    LSL.W   #1,D3                    ; Multiply size by two
+    SUBQ.W  #1,D3                    ; Subtract 1; current nibble=leftmost char
+.rt JSR     _CURSOR                  ; Draw the new cursor
     RTS                              ; Back to caller
 
 
