@@ -158,13 +158,7 @@ UILOOP:
     ; Main loop option 12: Quit and return to the ROM
 .md mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
-.me BSR     _UINEWLINE
-    LEA     sFormTest,A0
-    LEA     sFormTestPrompts,A1
-    LEA     sFormTestInitialVals,A2
-    LEA     sFormTestBounds,A3
-    BSR     FORM
-    BRA     UILOOP
+.me BRA     UILOOP
 
     ; ## 4. Subroutines etc. ##
 

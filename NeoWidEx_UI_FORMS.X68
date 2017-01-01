@@ -1,7 +1,7 @@
 *-----------------------------------------------------------
 * Title      : NeoWidEx_UI
 * Written by : Tom Stepleton
-* Date       : XX November 2016
+* Date       : 1 January 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by
@@ -18,11 +18,47 @@
     ; Args:
     ;   A0: Address of form template
     ;   A1: Address of an array of prompt strings for the four fields
-    ;   A2: If nonzero, address of an array of initial field values
-    ;   A3: If nonzero, address of an array of upper bounds (inclusive)
+    ;   A2: If nonzero, address of an array of four longwords containing initial
+    ;       field values
+    ;   A3: If nonzero, address of an array of four longwords containing upper
+    ;       bounds (inclusive)
     ; Notes:
-    ;   Trashes D0-D4/A0-A4
-    ;   TODO: add notes: format, warning about initial values and bounds
+    ;   Trashes D0-D4/A0-A4.
+    ;   Form templates resemble ordinary NeoWidEx null-terminated strings, but
+    ;       additionally have placeholders beginning with either 'a', 'b', 'c',
+    ;       or 'd' (connoting fields 0-3 respectively). By default these fields
+    ;       are booleans, but if they are immediately followed by 'a', 'b',
+    ;       'c', or 'd', they are respectively byte, word, 3-byte, or longword
+    ;       fields. Boolean fields are represented with 'Y' or 'N' characters
+    ;       and occupy the same display space as the placeholder characters, but
+    ;       these other types overwrite 2, 4, 6, and 8 characters respectively
+    ;       of the template, starting at the placeholder.
+    ;   See the end of this file for example form templates and a sample
+    ;       invocation of this subroutine.
+    ;   Field values submitted by the user are kept in the array of four
+    ;       longwords at zFieldValues.
+    ;   If the user exited the form with the intention to cancel (i.e. by
+    ;       typing 'q'), the byte at zFormIntent will be 0; otherwise it will
+    ;       be nonzero.
+    ;   This facility presents an interface that is customised to the five
+    ;       different datatypes described above. Internally, all data are longs,
+    ;       and are treated as such in initialisation, storage, bounds checking,
+    ;       etc.
+    ;   Values are always right-aligned: for example, changes to a byte field
+    ;       will be applied to the least significant byte of the longword in the
+    ;       zFieldValues array corresponding to that field. Boolean fields alter
+    ;       only the least significant nibble, setting it to either $0 or $1.
+    ;   If fields are initialised with values that exceed the maximum value
+    ;       representable by the field's type (e.g. a byte field is initialised
+    ;       with the value $00000100), then the user will not be able to change
+    ;       parts of the value that are in more significant nibbles than those
+    ;       editable by the field.
+    ;   The above can mean that if your bounds are smaller than the field's
+    ;       initial value, the user might not be able to change the field in a
+    ;       way that will allow them to submit the form. The error message will
+    ;       not give any useful hint about what's going on.
+    ;   No bound smaller than $1 should be specified for boolean fields (but why
+    ;       would you do that anyway?)
 FORM:
     ; First, prepare all "temporaries" used by this subroutine.
     mMemCpy A1,#z_FPromptAddrs,#(4*4)  ; Copy field prompt addresses
@@ -41,12 +77,12 @@ FORM:
     BRA.S   .c2                      ; Skip ahead to scan the form template
 .c1 mMemCpy A3,#z_FFieldBounds,#(4*4)  ; Copy upper bounds
 
-.c2 CLR.L   z_FFieldSizes            ; All zeros into field sizes
+.c2 CLR.L   z_FFieldSizes            ; All $FFs into field sizes, each...
+    SUBQ.L  #1,z_FFieldSizes         ; ...meaning no field present
 
     ; Next, scan the form template to find the locations and sizes of the
     ; fields. We also count the number of rows the template has as one plus
     ; the number of $0D characters inside.
-    ; TODO: save registers
     MOVE.L  A0,-(A7)                 ; Save form template address to stack
     CLR.B   D0                       ; Row count accumulates in D0
     CLR.B   D1                       ; Current column accumulates in D1
@@ -71,10 +107,13 @@ FORM:
     MOVE.B  D1,0(A1,D2.W)            ;   Save column into columns table
     ADDQ.B  #1,D1                    ;   Increment column (since we bumped A0)
 
-    MOVE.B  (A0),D3                  ;   Copy field size to D3
-    SUBI.B  #'0',D3                  ;   Turn ASCII into a number
     LEA     z_FFieldSizes,A1         ;   Field sizes base into A1
-    MOVE.B  D3,0(A1,D2.W)            ;   Save field size into field sizes table
+    CLR.B   0(A1,D2.W)               ;   Set field size to 'boolean' by default
+    MOVE.B  (A0),D3                  ;   Copy next character to D3
+    SUBI.B  #'`',D3                  ;   Turn ASCII into 1-based length
+    CMPI.B  #$4,D3                   ;   But is this length now preposterous?
+    BHI.S   .sl                      ;   Then a boolean field; we're past it
+    MOVE.B  D3,0(A1,D2.W)            ;   No, field size into sizes table
 
     LSL.B   #1,D3                    ;   D3 *= 2 for field size in chars
     SUBQ.B  #2,D3                    ;   D3 -= 2 for chars already used
@@ -116,8 +155,8 @@ FORM:
     CLR.B   zFormIntent              ; By default, user's intent is to cancel
 
     ; At last, the main UI loop!
-.ui TST.B   0(A3,D0.W)               ;   Does this field exist in the form?
-    BEQ     .u4                      ;   No, so on to the next field
+.ui CMPI.B  #$FF,0(A3,D0.W)          ;   Does this field exist in the form?
+    BEQ     .u7                      ;   No, so on to the next field
 
     ; 1. Set up the display and cursor position for the current field; also,
     ;    cache the current value of the field (prior to any user modification)
@@ -137,12 +176,13 @@ FORM:
 
     CLR.W   D3                       ;   Prepare D3 to hold cursor position
     MOVE.B  0(A3,D0.W),D3            ;   Twice the field width minus one goes...
+    BEQ.S   .u0                      ;   (if 0, a bool field; skip ahead)
     LSL.B   #1,D3                    ;   ...into D3, which means we start the...
     SUBQ.B  #1,D3                    ;   ...cursor under the leftmost nibble
-    JSR     _CURSOR                  ;   Show the cursor
+.u0 BSR     _CURSOR                  ;   Show the cursor
 
     ; 2. Obtain keyboard input
-.u0 BSR     _GETKEY                  ;     Retrieve a keypress into D4
+.u1 BSR     _GETKEY                  ;     Retrieve a keypress into D4
 
     ; 3a. Test for special keys first
     CMPI.B  #kKeyCodeLft,D4          ;     User typed keypad left?
@@ -158,19 +198,23 @@ FORM:
     CMPI.B  #kKeyCodeZ,D4            ;     User typed Z?
     BEQ     .kz                      ;       Reset field to its initial value
     CMPI.B  #kKeyCodeEnt,D4          ;     User typed enter?
-    BEQ     .u1                      ;       Check bounds and submit form
+    BEQ     .u4                      ;       Check bounds and submit form
     CMPI.B  #kKeyCodeX,D4            ;     User typed X?
-    BEQ     .u1                      ;       Check bounds and submit form
+    BEQ     .u4                      ;       Check bounds and submit form
     CMPI.B  #kKeyCodeRet,D4          ;     User typed return?
-    BEQ     .u2                      ;       Check bounds and on to next field
+    BEQ     .u5                      ;       Check bounds and on to next field
     CMPI.B  #kKeyCodeTab,D4          ;     User typed tab?
-    BEQ     .u2                      ;       Check bounds and on to next field
+    BEQ     .u5                      ;       Check bounds and on to next field
     CMPI.B  #kKeyCodeQ,D4            ;     User typed Q?
     BEQ     .kq                      ;       Reset form and quit
     CMPI.B  #kKeyCodeSla,D4          ;     User typed /? (or ?)
     BEQ     .kh                      ;       Show help
 
-    ; 3b. Not a special key; see if user has typed a hex digit
+    ; 3b. Not a special key; if this field is bool, skip ahead
+    TST.B  0(A3,D0.W)                ;     Is this field boolean?
+    BEQ.S  .u2                       ;     Yes, skip ahead to handle it
+
+    ; 3c. Field is not bool; see if user has typed a hex digit
     MOVE.L  A0,-(A7)                 ;     Save A0 to stack
     MOVE.W  D0,-(A7)                 ;     Save D0 to stack
     LEA     d_FKeyToNibble,A0        ;     Key-to-nibble table to A0
@@ -184,26 +228,38 @@ FORM:
     ANDI.B  #$FB,CCR                 ;     Clear zero bit to mark valid input
 .hx MOVEM.W (A7)+,D0                 ;     Recover D0 from stack
     MOVEM.L (A7)+,A0                 ;     Recover A0 from stack
+    BRA.S   .u3                      ;     Deal with user input
 
-    ; 3c. Hex digit or no, deal with it
-    BEQ     .u0                      ;     User typed nonsense? Wait for new key
+    ; 3d. Field is bool; see if user has typed Y or N
+.u2 CMPI.B  #kKeyCodeN,D4            ;     Did the user type a N?
+    BNE.S   .by                      ;     No, skip to see if they typed a Y
+    CLR.B   D4                       ;     Yes, this is the binary 0 nibble
+    BRA.S   .bx                      ;     Jump ahead to handle the nibble
+.by CMPI.B  #kKeyCodeY,D4            ;     Did the user type a Y?
+    BNE.S   .bx                      ;     No, skip ahead, expect to ignore key
+    MOVE.B  #$01,D4                  ;     Yes, here is the binary 1 nibble
+    BRA.S   .u3                      ;     Z bit is already set correctly
+.bx EORI.B  #$04,CCR                 ;     Invert Z bit for what follows
+
+    ; 3e. Hex digit or no, Y/N or no, deal with what was typed
+.u3 BEQ     .u1                      ;     User typed nonsense? Wait for new key
     BSR     _SETNIBBLE               ;     Update form value with user nibble
     BSR     _FILLFIELD               ;     Refresh form value display
     BSR     _CURSORRIGHT             ;     Advance cursor
-    BRA     .u0                      ;     Wait for a new key
+    BRA     .u1                      ;     Wait for a new key
 
-.u1 ; 4. User has pressed the enter key; mark form intent to execute
+.u4 ; 4. User has pressed the enter key; mark form intent to execute
     MOVE.B  #$FF,zFormIntent         ;   User now wants to submit this form
 
     ; 5. Before we move on from this field, see if the new value is in bounds;
     ;    if not, admonish the user and restore the prior field value
-.u2 LEA     z_FFieldBounds,A4        ;   Field bounds array base into A4
+.u5 LEA     z_FFieldBounds,A4        ;   Field bounds array base into A4
     MOVE.W  D0,-(A7)                 ;   Save D0 onto stack
     LSL.W   #2,D0                    ;   D0 *= 4 for field indirect addressing
     MOVE.L  0(A0,D0.W),D4            ;   Copy new value to D4
     CMP.L   0(A4,D0.W),D4            ;   Compare with inclusive upper bound
     MOVEM.W (A7)+,D0                 ;   Restore D0 without changing flags
-    BLS.S   .u3                      ;   New value is in range, so move ahead
+    BLS.S   .u6                      ;   New value is in range, so move ahead
     CLR.B   zFormIntent              ;   It's not; cancel submit just in case
     JSR     kMakeDbox                ;   Clear dialog box for err message
     MOVE.W  #kDboxRow,D1             ;   Dialog box pixel row to D1
@@ -222,13 +278,13 @@ FORM:
     BRA     .ui                      ;   User, try again with this field
 
     ; 6. Fill the new value into the field
-.u3 BSR     _FIELDPOS                ;   Position of current field into D1,D2
+.u6 BSR     _FIELDPOS                ;   Position of current field into D1,D2
     BSR     _FILLFIELD               ;   Fill in current field value
 
     ; 7. Either exit if the user intends to submit, or move on to the next field
     TST.B   zFormIntent              ;   Does the user want to quit?
     BNE.S   .rt                      ;   Yes, jump to exit
-.u4 ADDQ.W  #1,D0                    ;   Advance to next field
+.u7 ADDQ.W  #1,D0                    ;   Advance to next field
     CMPI.W  #4,D0                    ;   Or do we need to rewind to field 0?
     BLO     .ui                      ;   No, so back to top of UI loop
     CLR.W   D0                       ;   Yes, so rewind to field 0
@@ -241,11 +297,11 @@ FORM:
     ; Special key handlers:
     ;    Move the cursor left (with wrapping)
 .kl BSR     _CURSORLEFT              ; Move the cursor one position left
-    BRA     .u0                      ; Back to keyboard scanning
+    BRA     .u1                      ; Back to keyboard scanning
 
     ;    Move the cursor right (with wrapping)
 .kr BSR     _CURSORRIGHT             ; Move the cursor one position right
-    BRA     .u0                      ; Back to keyboard scanning
+    BRA     .u1                      ; Back to keyboard scanning
 
     ;    Reset the current field to its initial value
 .kz LEA     z_FFieldResets,A4        ; Initial field values into A4
@@ -297,7 +353,7 @@ _REFRESHFORM:
     MOVEM.W D0-D2,-(A7)              ; Save used data registers to stack
     CLR.W   D0                       ; DO: field index
 
-.t0 TST.B   0(A3,D0.W)               ;   Does this field exist in the form?
+.t0 CMPI.B  #$FF,0(A3,D0.W)          ;   Does this field exist in the form?
     BEQ.S   .t1                      ;   No, so on to the next field
     BSR     _FIELDPOS                ;   Position of this field into D1,D2
     BSR     _FILLFIELD               ;   Show this field's value
@@ -339,32 +395,42 @@ _FIELDPOS:
     ; Notes:
     ;   Does not alter contents of D1-D2.
 _FILLFIELD:
-    CMPI.B  #1,0(A3,D0.W)            ; Is this field a byte?
+    TST.B   0(A3,D0.W)               ; Is this field a boolean field?
     BNE.S   .f0                      ; No, skip ahead
+    LSL.W   #2,D0                    ; Yes, D0 *= 4 for indirect addressing...
+    TST.B   3(A0,D0.W)               ; Is this boolean value set?
+    BNE.S   .fy                      ; Yes, skip ahead to print so
+    mPrtLit D1,D2,#kFirstCol,noexport,<'N'>
+    BRA     .rt                      ; Skip to end of subroutine
+.fy mPrtLit D1,D2,#kFirstCol,noexport,<'Y'>
+    BRA     .rt                      ; Skip to end of subroutine
+
+.f0 CMPI.B  #1,0(A3,D0.W)            ; Is this field a byte?
+    BNE.S   .f1                      ; No, skip ahead
     LSL.W   #2,D0                    ; Yes, D0 *= 4 for indirect addressing...
     MOVE.B  3(A0,D0.W),-(A7)         ; ...and move byte onto stack
     mPrtHxB D1,D2,#kFirstCol,noexport  ; Print byte
-    BRA     .f3                      ; Skip to end of loop
+    BRA     .rt                      ; Skip to end of subroutine
 
-.f0 CMPI.B  #2,0(A3,D0.W)            ; Is this field a word?
-    BNE.S   .f1                      ; No, skip ahead
+.f1 CMPI.B  #2,0(A3,D0.W)            ; Is this field a word?
+    BNE.S   .f2                      ; No, skip ahead
     LSL.W   #2,D0                    ; Yes, D0 *= 4 for indirect addressing...
     MOVE.W  2(A0,D0.W),-(A7)         ; ...and move word onto stack
     mPrtHxW D1,D2,#kFirstCol,noexport  ; Print word
-    BRA.S   .f3                      ; Skip to end of loop
+    BRA.S   .rt                      ; Skip to end of subroutine
 
-.f1 CMPI.B  #3,0(A3,D0.W)            ; Is this field a three-byter?
-    BNE.S   .f2                      ; No, skip ahead
+.f2 CMPI.B  #3,0(A3,D0.W)            ; Is this field a three-byter?
+    BNE.S   .f3                      ; No, skip ahead
     LSL.W   #2,D0                    ; Yes, D0 *= 4 for indirect addressing...
     MOVE.L  0(A0,D0.W),-(A7)         ; ...and move long holding it onto stack
     mPrtHx3 D1,D2,#kFirstCol,noexport  ; Print the three-byter
-    BRA.S   .f3                      ; Skip to end of loop
+    BRA.S   .rt                      ; Skip to end of subroutine
 
-.f2 LSL.W   #2,D0                    ; Must be a long, D0 *= 4 for addressing...
+.f3 LSL.W   #2,D0                    ; Must be a long, D0 *= 4 for addressing...
     MOVE.L  0(A0,D0.W),-(A7)         ; ...and move long onto stack
     mPrtHxL D1,D2,#kFirstCol,noexport  ; Print the long
 
-.f3 LSR.W   #2,D0                    ; Restore D0: D0 /= 4
+.rt LSR.W   #2,D0                    ; Restore D0: D0 /= 4
     RTS                              ; Back to caller
 
 
@@ -383,8 +449,10 @@ _BLANKFIELD:
     MOVE.B  0(A3,D0.W),D3            ; ...copying in the field size...
     LSL.B   #1,D3                    ; ...multiplying that by two...
     ADD.W   D2,D3                    ; ...adding the field's first column...
+    CMP.B   D2,D3                    ; (But are D2 and D3 now the same? If so...
+    BEQ.S   .b1                      ; field is bool; skip ahead to print)
 .b0 SUBQ.W  #1,D3                    ; ...and -1 to get last column/decrement
-    mPrtLit D1,D3,#kFirstCol,noexport,<'!'>  ; Print ?-block
+.b1 mPrtLit D1,D3,#kFirstCol,noexport,<'!'>  ; Print ?-block
     CMP.W   D2,D3                    ; Have we reached the start of the field?
     BNE.S   .b0                      ; No, keep going
     MOVE.W  (A7)+,D3                 ; Yes, recover D3 from stack
@@ -407,9 +475,10 @@ _CURSOR:
     ; D3 receives the cursor offset from the leftmost character of the field.
     NEG.B   D3                       ; First, negate D3...
     ADD.B   0(A3,D0.W),D3            ; ...then add twice the field width...
-    ADD.B   0(A3,D0.W),D3
+    ADD.B   0(A3,D0.W),D3            ; (If D3 still 0 after that, field was...
+    BEQ.S   .c0                      ; ...likely bool; offset already correct)
     SUBQ.B  #1,D3                    ; ...minus one, is the offset
-    EXT.W   D3                       ; Sign-extend to a word
+.c0 EXT.W   D3                       ; Sign-extend to a word
 
     ; Preload A0 with the number of bytes from first screen byte to the first
     ; byte of the cursor's first row.
@@ -453,7 +522,7 @@ _SETNIBBLE:
     MOVE.L  0(A0,D0.W),D1            ; Copy field value to D1
     EXT.W   D3                       ; Nibble index from byte to word
     LSL.W   #2,D3                    ; And convert to number of bits to rotate
-    ROR.L   D3,D1                    ; Rotate nibble to change to LSnibble
+    ROR.L   D3,D1                    ; Rotate nibble to change to LSNibble
     ANDI.B  #$F0,D1                  ; Blank out old value of nibble to change
     OR.B    D4,D1                    ; Add in new nibble value
     ROL.L   D3,D1                    ; Rotate nibble to change back in place
@@ -491,16 +560,17 @@ _RESETVALUE:
     ;   Assumes cursor is already drawn; clears prior to move, then redraws.
     ;   Cursor will "wrap around" to the right side of the field.
 _CURSORLEFT:
-    JSR     _CURSOR                  ; Clear existing cursor
+    BSR     _CURSOR                  ; Clear existing cursor
     MOVE.W  D1,-(A7)                 ; Save D1 on stack
     MOVE.B  0(A3,D0.W),D1            ; Copy field width to D1
+    BEQ.S   .rt                      ; Skip ahead to exit if field is boolean
     LSL.B   #1,D1                    ; Shift to get its width in nibbles
     ADDQ.W  #1,D3                    ; Increment current nibble
     CMP.B   D1,D3                    ; Is current nibble >= field size?
     BLO.S   .rt                      ; No, go ahead and draw the new cursor
     CLR.W   D3                       ; Yes, clear; current nibble=rightmost char
 .rt MOVE.W  (A7)+,D1                 ; Restore D1 from stack
-    JSR     _CURSOR                  ; Draw the new cursor
+    BSR     _CURSOR                  ; Draw the new cursor
     RTS                              ; Back to caller
 
 
@@ -515,15 +585,16 @@ _CURSORLEFT:
     ;   Assumes cursor is already drawn; clears prior to move, then redraws.
     ;   Cursor will "wrap around" to the left side of the field.
 _CURSORRIGHT:
-    JSR     _CURSOR                  ; Clear existing cursor
+    BSR     _CURSOR                  ; Clear existing cursor
     SUBQ.W  #1,D3                    ; Decrement current nibble
     TST.W   D3                       ; Is current nibble < 0?
     BPL.S   .rt                      ; No, go ahead and draw the new cursor
     CLR.W   D3                       ; Yes, so clear current nibble
     MOVE.B  0(A3,D0.W),D3            ; Size into current nibble LSByte
+    BEQ.S   .rt                      ; Skip ahead to exit if field is boolean
     LSL.W   #1,D3                    ; Multiply size by two
     SUBQ.W  #1,D3                    ; Subtract 1; current nibble=leftmost char
-.rt JSR     _CURSOR                  ; Draw the new cursor
+.rt BSR     _CURSOR                  ; Draw the new cursor
     RTS                              ; Back to caller
 
 
@@ -618,27 +689,60 @@ sFormHelp:
 sFormOutOfBounds:
     DC.B    ' IS OUT OF BOUNDS. MAX VALUE HERE IS ',0
 
-sFormTest:
-    DC.B    $0D
-    DC.B    '  --- SOME FORM ---',$0D
-    DC.B    'THIS IS A FORM. HERE IS THE THIRD FIELD. c3____. COOL.',$0D
-    DC.B    'LET US NOW HAVE FIELD TWO-b4______. HOW ABOUT THAT.',$0D
-    DC.B    'FIELD FOUR IS ONE BYTE... d1... AND AT LAST...',$0D
-    DC.B    'FIELD ONE IS a2__ ... TWO BYTES.',0
-
-    DS.W    0
-sFormTestPrompts:
-    DC.L    .p1,.p2,.p3,.p4
-.p1 DC.B    'FIELD 1',0
-.p2 DC.B    'FIELD TWO',0
-.p3 DC.B    'FIELD THREE',0
-.p4 DC.B    'FIELD IV',0
-
-    DS.W    0
-sFormTestInitialVals:
-    DC.L    $00001314,$21222324,$00323334,$00000044
-sFormTestBounds:
-    DC.L    $00007FFF,$7FFFFFFF,$007FFFFF,$0000007F
+* ### EXAMPLE FORMS INVOCATION
+*
+*     LEA     sFormTest,A0
+*     LEA     sFormTestPrompts,A1
+*     LEA     sFormTestInitialVals,A2
+*     LEA     sFormTestBounds,A3
+*     BSR     FORM
+*
+* ### EXAMPLE FORMS DATA (LARGER FIELDS)
+*
+* sFormTest:
+*     DC.B    $0D
+*     DC.B    '  --- SOME FORM ---',$0D
+*     DC.B    'THIS IS A FORM. HERE IS THE THIRD FIELD. cc____. COOL.',$0D
+*     DC.B    'LET US NOW HAVE FIELD TWO-bd______. HOW ABOUT THAT.',$0D
+*     DC.B    'FIELD FOUR IS ONE BYTE... da... AND AT LAST...',$0D
+*     DC.B    'FIELD ONE IS ab__ ... TWO BYTES.',0
+* 
+*     DS.W    0
+* sFormTestPrompts:
+*     DC.L    .p1,.p2,.p3,.p4
+* .p1 DC.B    'FIELD 1',0
+* .p2 DC.B    'FIELD TWO',0
+* .p3 DC.B    'FIELD THREE',0
+* .p4 DC.B    'FIELD IV',0
+* 
+*     DS.W    0
+* sFormTestInitialVals:
+*     DC.L    $00001314,$21222324,$00323334,$00000044
+* sFormTestBounds:
+*     DC.L    $00007FFF,$7FFFFFFF,$007FFFFF,$0000007F
+*
+* ### EXAMPLE FORMS DATA (BOOLEAN FIELDS)
+*
+* sBoolTest:
+*     DC.B    $0D
+*     DC.B    '  --- A FORM WITH BOOLS ---',$0D
+*     DC.B    'HERE IS BOOL FIELD 3-c',$0D
+*     DC.B    'BOOL FIELD 2b2',$0D
+*     DC.B    'BYTE FIELD 4-da AND BOOL FIELD 1-a',0
+* 
+*     DS.W    0
+* sBoolTestPrompts:
+*     DC.L    .p1,.p2,.p3,.p4
+* .p1 DC.B    'FIELD 1',0
+* .p2 DC.B    'FIELD TWO',0
+* .p3 DC.B    'FIELD THREE',0
+* .p4 DC.B    'FIELD IV',0
+* 
+*     DS.W    0
+* sBoolTestInitialVals:
+*     DC.L    $00000001,$00000000,$00000001,$000000cd
+* sBoolTestBounds:
+*     DC.L    $00000001,$000000FF,$00000001,$000000fe
 
 
 ** (Back to the code section) **
