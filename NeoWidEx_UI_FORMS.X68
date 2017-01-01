@@ -21,8 +21,8 @@
     ;   A2: If nonzero, address of an array of initial field values
     ;   A3: If nonzero, address of an array of upper bounds (inclusive)
     ; Notes:
-    ;   Trashes D0-D3/A0-A4
-    ;   TODO: add notes
+    ;   Trashes D0-D4/A0-A4
+    ;   TODO: add notes: format, warning about initial values and bounds
 FORM:
     ; First, prepare all "temporaries" used by this subroutine.
     mMemCpy A1,#z_FPromptAddrs,#(4*4)  ; Copy field prompt addresses
@@ -113,11 +113,14 @@ FORM:
     LEA     z_FFieldCols,A2          ; Field columns array into A2
     LEA     z_FFieldSizes,A3         ; Field sizes array into A3
     BSR     _REFRESHFORM             ; Fill in current field values
+    CLR.B   zFormIntent              ; By default, user's intent is to cancel
 
     ; At last, the main UI loop!
 .ui TST.B   0(A3,D0.W)               ;   Does this field exist in the form?
-    BEQ     .u9                      ;   No, so on to the next field
+    BEQ     .u4                      ;   No, so on to the next field
 
+    ; 1. Set up the display and cursor position for the current field; also,
+    ;    cache the current value of the field (prior to any user modification)
     JSR     kMakeDbox                ;   Show dialogue box
     BSR     _FIELDPOS                ;   Position of current field into D1,D2
     BSR     _BLANKFIELD              ;   Overlay ?-blocks onto current field
@@ -125,25 +128,107 @@ FORM:
     MOVE.W  #kDboxRow,D1             ;   Dialog box pixel row to D1
     MOVE.W  #kDboxColumn,D2          ;   Dialog box character column to D2
     LEA     z_FPromptAddrs,A4        ;   Field prompt pointer array into A4
-    LSL.W   #2,D0                    ;   D0 *= 4 for indirect addressing
+    LSL.W   #2,D0                    ;   D0 *= 4 for field indirect addressing
     MOVE.L  0(A4,D0.W),-(A7)         ;   Prompt string pointer onto stack
     mPrint  D1,D2,#kFirstCol,s,<'? '>    ; Print prompt into dialog box
+    MOVE.L  0(A0,D0.W),z_FPriorValue   ; Cache current value of this field
     LSR.W   #2,D0                    ;   Restore D0: D0 /= 4
     BSR     _FILLFIELD               ;   Print field contents into dialog box
 
-   MOVE.B #1,D3    ; D3: Cursor on the field's second nibble
-   JSR    _CURSOR  ; Show cursor
-   MOVE.L D0,-(A7)
-._ JSR    kWait4Input
-   TST.B  D0
-   BPL.S  ._
-   MOVE.L (A7)+,D0
-   JSR    _CURSOR  ; Clear cursor
+    CLR.W   D3                       ;   Prepare D3 to hold cursor position
+    MOVE.B  0(A3,D0.W),D3            ;   Twice the field width minus one goes...
+    LSL.B   #1,D3                    ;   ...into D3, which means we start the...
+    SUBQ.B  #1,D3                    ;   ...cursor under the leftmost nibble
+    JSR     _CURSOR                  ;   Show the cursor
 
-    BSR     _FIELDPOS                ;   Position of current field into D1,D2
+    ; 2. Obtain keyboard input
+.u0 BSR     _GETKEY                  ;     Retrieve a keypress into D4
+
+    ; 3a. Test for special keys first
+    CMPI.B  #kKeyCodeLft,D4          ;     User typed keypad left?
+    BEQ     .kl                      ;       Move cursor left (with wrapping)
+    CMPI.B  #kKeyCodeBsp,D4          ;     User typed backspace?
+    BEQ     .kl                      ;       Move cursor left (with wrapping)
+    CMPI.B  #kKeyCodeRgt,D4          ;     User typed keypad right?
+    BEQ     .kr                      ;       Move cursor right (with wrapping)
+    CMPI.B  #kKeyCodeSpc,D4          ;     User typed space?
+    BEQ     .kr                      ;       Move cursor right (with wrapping)
+    CMPI.B  #kKeyCodeClr,D4          ;     User typed clear?
+    BEQ     .kz                      ;       Reset field to its initial value
+    CMPI.B  #kKeyCodeZ,D4            ;     User typed Z?
+    BEQ     .kz                      ;       Reset field to its initial value
+    CMPI.B  #kKeyCodeEnt,D4          ;     User typed enter?
+    BEQ     .u1                      ;       Check bounds and submit form
+    CMPI.B  #kKeyCodeX,D4            ;     User typed X?
+    BEQ     .u1                      ;       Check bounds and submit form
+    CMPI.B  #kKeyCodeRet,D4          ;     User typed return?
+    BEQ     .u2                      ;       Check bounds and on to next field
+    CMPI.B  #kKeyCodeTab,D4          ;     User typed tab?
+    BEQ     .u2                      ;       Check bounds and on to next field
+    CMPI.B  #kKeyCodeQ,D4            ;     User typed Q?
+    BEQ     .kq                      ;       Reset form and quit
+    CMPI.B  #kKeyCodeSla,D4          ;     User typed /? (or ?)
+    BEQ     .kh                      ;       Show help
+
+    ; 3b. Not a special key; see if user has typed a hex digit
+    MOVE.L  A0,-(A7)                 ;     Save A0 to stack
+    MOVE.W  D0,-(A7)                 ;     Save D0 to stack
+    LEA     d_FKeyToNibble,A0        ;     Key-to-nibble table to A0
+.hl MOVE.B  (A0)+,D0                 ;       Copy key-to-compare to D0
+    BEQ.S   .hx                      ;       Quit if it was the null terminator
+    CMP.B   D0,D4                    ;       Did we type this key?
+    BEQ.S   .hc                      ;       Yes, jump ahead to get its nibble
+    ADDQ.L  #1,A0                    ;       No, move to next table entry
+    BRA.S   .hl                      ;       Loop again to deal with that entry
+.hc MOVE.B  (A0)+,D4                 ;     Copy corresponding hex digit to D4
+    ANDI.B  #$FB,CCR                 ;     Clear zero bit to mark valid input
+.hx MOVEM.W (A7)+,D0                 ;     Recover D0 from stack
+    MOVEM.L (A7)+,A0                 ;     Recover A0 from stack
+
+    ; 3c. Hex digit or no, deal with it
+    BEQ     .u0                      ;     User typed nonsense? Wait for new key
+    BSR     _SETNIBBLE               ;     Update form value with user nibble
+    BSR     _FILLFIELD               ;     Refresh form value display
+    BSR     _CURSORRIGHT             ;     Advance cursor
+    BRA     .u0                      ;     Wait for a new key
+
+.u1 ; 4. User has pressed the enter key; mark form intent to execute
+    MOVE.B  #$FF,zFormIntent         ;   User now wants to submit this form
+
+    ; 5. Before we move on from this field, see if the new value is in bounds;
+    ;    if not, admonish the user and restore the prior field value
+.u2 LEA     z_FFieldBounds,A4        ;   Field bounds array base into A4
+    MOVE.W  D0,-(A7)                 ;   Save D0 onto stack
+    LSL.W   #2,D0                    ;   D0 *= 4 for field indirect addressing
+    MOVE.L  0(A0,D0.W),D4            ;   Copy new value to D4
+    CMP.L   0(A4,D0.W),D4            ;   Compare with inclusive upper bound
+    MOVEM.W (A7)+,D0                 ;   Restore D0 without changing flags
+    BLS.S   .u3                      ;   New value is in range, so move ahead
+    CLR.B   zFormIntent              ;   It's not; cancel submit just in case
+    JSR     kMakeDbox                ;   Clear dialog box for err message
+    MOVE.W  #kDboxRow,D1             ;   Dialog box pixel row to D1
+    MOVE.W  #kDboxColumn,D2          ;   Dialog box character column to D2
+    BSR     _FILLFIELD               ;   Show bad value at front of the error
+    ADD.B   0(A3,D0.W),D2            ;   Add twice the field width to D2...
+    ADD.B   0(A3,D0.W),D2            ;   ...to advance column position for the:
+    mPrtMem D1,D2,#kFirstCol,export,#sFormOutOfBounds  ; Out-of-bounds message
+    EXG     A0,A4                    ;   A0 to bounds array; A4 to values array
+    BSR     _FILLFIELD               ;   Show bound at end of the error
+    EXG     A4,A0                    ;   Unswap A0 and A4
+    BSR     _GETKEY                  ;   Wait for user keypress
+    LSL.W   #2,D0                    ;   D0 *= 4 for field indirect addressing
+    MOVE.L  z_FPriorValue,0(A0,D0.W)   ; Restore prior value of this field
+    LSR.W   #2,D0                    ;   D0 /= 4 to return it to being an index
+    BRA     .ui                      ;   User, try again with this field
+
+    ; 6. Fill the new value into the field
+.u3 BSR     _FIELDPOS                ;   Position of current field into D1,D2
     BSR     _FILLFIELD               ;   Fill in current field value
 
-.u9 ADDQ.W  #1,D0                    ;   Advance to next field
+    ; 7. Either exit if the user intends to submit, or move on to the next field
+    TST.B   zFormIntent              ;   Does the user want to quit?
+    BNE.S   .rt                      ;   Yes, jump to exit
+.u4 ADDQ.W  #1,D0                    ;   Advance to next field
     CMPI.W  #4,D0                    ;   Or do we need to rewind to field 0?
     BLO     .ui                      ;   No, so back to top of UI loop
     CLR.W   D0                       ;   Yes, so rewind to field 0
@@ -153,32 +238,51 @@ FORM:
 .rt JSR     kClearDbox               ; Delete dialogue box
     RTS                              ; Return to caller
 
-    ; Test code now: just show the template and cover the fields with ?-blocks.
- ;mResetP
- ;LEA zFieldValues,A1
- ;mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'FIELD VALUES'>
- ;mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,#4,qpendl
+    ; Special key handlers:
+    ;    Move the cursor left (with wrapping)
+.kl BSR     _CURSORLEFT              ; Move the cursor one position left
+    BRA     .u0                      ; Back to keyboard scanning
 
- ;LEA z_FFieldBounds,A1
- ;mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'FIELD BOUNDS'>
- ;mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,#4,qpendl
+    ;    Move the cursor right (with wrapping)
+.kr BSR     _CURSORRIGHT             ; Move the cursor one position right
+    BRA     .u0                      ; Back to keyboard scanning
 
- ;LEA z_FPromptAddrs,A1
- ;mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'PROMPT ADDRESSES'>
- ;mDump.L kCrtRow,kCrtCol,#kFirstCol,A1,#4,qpendl
+    ;    Reset the current field to its initial value
+.kz LEA     z_FFieldResets,A4        ; Initial field values into A4
+    BSR     _RESETVALUE              ; Reset current field to its initial value
+    BRA     .ui                      ; Do complete field redraw
 
- ;LEA z_FFieldRows,A1
- ;mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'FIELD ROWS'>
- ;mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,#4,qpendl
+    ;    Reset all field values and quit
+.kq LEA     z_FFieldResets,A4        ; Initial field values into A4
+    MOVE.W  #$03,D0                  ; Reset all fields, starting at the fourth
+.q0 BSR     _RESETVALUE              ; Reset this field
+    SUBQ.B  #1,D0                    ; On to the preceding field
+    BPL.S   .q0                      ; Loop until done with fields
+    BSR     _REFRESHFORM             ; Re-display form with original values
+    BRA.S   .rt                      ; Go to cleanup and return to caller
 
- ;LEA z_FFieldCols,A1
- ;mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'FIELD COLS'>
- ;mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,#4,qpendl
+    ;    Show help message
+.kh JSR     kMakeDbox                ; Clear dialog box for help message
+    MOVE.W  #kDboxRow,D1             ; Dialog box pixel row to D1
+    MOVE.W  #kDboxColumn,D2          ; Dialog box character column to D2
+    mPrtMem D1,D2,#kFirstCol,noexport,#sFormHelp   ; Show help message
+    BSR     _GETKEY                  ; Wait for user keypress
+    BRA     .ui                      ; Do complete field redraw
 
- ;LEA z_FFieldSizes,A1
- ;mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'FIELD SIZES'>
- ;mDump.B kCrtRow,kCrtCol,#kFirstCol,A1,#4,qpendl
- ;mPrtCr  kCrtRow,kCrtCol,#kFirstCol
+
+    ; _GETKEY -- FORM helper: get a key from the user, put keydown code into D4
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D4.
+_GETKEY:
+    MOVE.L  D0,-(A7)                 ; Save D0 to stack
+.wk JSR     kWait4Input              ;   Get an event from the COPS
+    TST.B   D0                       ;   Was it a keyboard event?
+    BPL.S   .wk                      ;   No, wait again
+    MOVE.B  D0,D4                    ; Yes, copy keyboard event to D4
+    MOVE.L  (A7)+,D0                 ; And restore D0 from the stack
+    RTS                              ; Back to caller
 
 
     ; _REFRESHFORM -- FORM helper: fill form with current values
@@ -359,6 +463,23 @@ _SETNIBBLE:
     RTS                              ; Back to caller
 
 
+    ; _RESETVALUE -- FORM helper: reset a field value to its initial value
+    ; Args:
+    ;   D0: field index, as a word in 0..3
+    ;   A0: Address of the field values array
+    ;   A4: Address of the field initial values array
+    ; Notes:
+    ;   (none)
+_RESETVALUE:
+    MOVE.L  A0,-(A7)                 ; Save A0 on stack
+    LSL.W   #2,D0                    ; Field index to table offset
+    ADDA.W  D0,A0                    ; Point A0 to selected initial value
+    MOVE.L  0(A4,D0.W),(A0)          ; Copy initial value to field value
+    LSR.W   #2,D0                    ; Table offset back to field index
+    MOVE.L  (A7)+,A0                 ; Recover A0 from stack
+    RTS                              ; Back to caller
+
+
     ; _CURSORLEFT -- FORM helper: move a displayed cursor leftward
     ; Args:
     ;   D0: field index, as a word in 0..3
@@ -371,11 +492,15 @@ _SETNIBBLE:
     ;   Cursor will "wrap around" to the right side of the field.
 _CURSORLEFT:
     JSR     _CURSOR                  ; Clear existing cursor
+    MOVE.W  D1,-(A7)                 ; Save D1 on stack
+    MOVE.B  0(A3,D0.W),D1            ; Copy field width to D1
+    LSL.B   #1,D1                    ; Shift to get its width in nibbles
     ADDQ.W  #1,D3                    ; Increment current nibble
-    CMP.B   0(A3,D0.W),D3            ; Is current nibble >= field size?
+    CMP.B   D1,D3                    ; Is current nibble >= field size?
     BLO.S   .rt                      ; No, go ahead and draw the new cursor
     CLR.W   D3                       ; Yes, clear; current nibble=rightmost char
-.rt JSR     _CURSOR                  ; Draw the new cursor
+.rt MOVE.W  (A7)+,D1                 ; Restore D1 from stack
+    JSR     _CURSOR                  ; Draw the new cursor
     RTS                              ; Back to caller
 
 
@@ -406,15 +531,47 @@ _CURSORRIGHT:
 * NeoWidEx UI FORMS numerical data =========================
     SECTION kSecData
 
-; TODO: do we need it?
+    ; Table for converting key codes to hex nibbles.
+d_FKeyToNibble:
+    DC.B    kKeyCode0,$00
+    DC.B    kKeyCode1,$01
+    DC.B    kKeyCode2,$02
+    DC.B    kKeyCode3,$03
+    DC.B    kKeyCode4,$04
+    DC.B    kKeyCode5,$05
+    DC.B    kKeyCode6,$06
+    DC.B    kKeyCode7,$07
+    DC.B    kKeyCode8,$08
+    DC.B    kKeyCode9,$09
+    DC.B    kKeyCodeA,$0A
+    DC.B    kKeyCodeB,$0B
+    DC.B    kKeyCodeC,$0C
+    DC.B    kKeyCodeD,$0D
+    DC.B    kKeyCodeE,$0E
+    DC.B    kKeyCodeF,$0F
+    DC.B    kKeyCodePd0,$00
+    DC.B    kKeyCodePd1,$01
+    DC.B    kKeyCodePd2,$02
+    DC.B    kKeyCodePd3,$03
+    DC.B    kKeyCodePd4,$04
+    DC.B    kKeyCodePd5,$05
+    DC.B    kKeyCodePd6,$06
+    DC.B    kKeyCodePd7,$07
+    DC.B    kKeyCodePd8,$08
+    DC.B    kKeyCodePd9,$09
+    DC.B    0
+
+    DS.W    0                        ; Force even alignment for following data
 
 
     PAGE
 * NeoWidEx UI FORMS scratch data allocation ================
     SECTION kSecScratch
 
-    DS.W    0                        ; Just to make sure we're even-aligned
+zFormIntent:                         ; User is done with the form; what now?
+    DC.B    0                        ; 0-disregard, quit; Nonzero-execute
 
+    DS.W    0                        ; Just to make sure we're even-aligned
 zFieldValues:                        ; Will hold longs entered into fields
     DC.B    'Fiel'
     DC.B    'dVal'
@@ -446,6 +603,9 @@ z_FFieldCols:                        ; Field columns, absolute
 z_FFieldSizes:                       ; Field sizes, in bytes
     DC.B    'Lens'                   ; 0 means: this field is absent
 
+z_FPriorValue:                       ; Temporary storage for an old field value
+    DC.B    ';Old'
+
     DS.W    0                        ; Force even alignment for following data
 
 
@@ -454,7 +614,9 @@ z_FFieldSizes:                       ; Field sizes, in bytes
     SECTION kSecStrings
 
 sFormHelp:
-    DC.B    'TAB/RETURN-NEXT FIELD.  CLEAR-RESET FIELD.  ENTER-SUBMIT.',0
+    DC.B    'TAB/RET-NEXT FIELD. CLEAR-RESET FIELD. ENTER-SUBMIT. Q-CANCEL.',0
+sFormOutOfBounds:
+    DC.B    ' IS OUT OF BOUNDS. MAX VALUE HERE IS ',0
 
 sFormTest:
     DC.B    $0D
@@ -474,7 +636,9 @@ sFormTestPrompts:
 
     DS.W    0
 sFormTestInitialVals:
-    DC.L    $11121314,$21222324,$31323334,$41424344
+    DC.L    $00001314,$21222324,$00323334,$00000044
+sFormTestBounds:
+    DC.L    $00007FFF,$7FFFFFFF,$007FFFFF,$0000007F
 
 
 ** (Back to the code section) **

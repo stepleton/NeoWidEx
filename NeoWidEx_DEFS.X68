@@ -28,21 +28,61 @@ kSctrTime   EQU  $1200000            ; Widget sector read timeout: ~3 minutes
 kSctrTries  EQU  $10                 ; Widget sector read retry count
 kSctrThresh EQU  $3                  ; Widget sparing threshold count
 
-kKeyCode1   EQU  $F4                 ; Key code for the 1 key
-kKeyCode2   EQU  $F1                 ; Key code for the 2 key
-kKeyCode3   EQU  $F2                 ; Key code for the 3 key
-kKeyCode4   EQU  $F3                 ; Key code for the 4 key
-kKeyCode5   EQU  $E4                 ; Key code for the 5 key
-kKeyCode6   EQU  $E1                 ; Key code for the 6 key
-kKeyCode7   EQU  $E2                 ; Key code for the 7 key
-kKeyCode8   EQU  $E3                 ; Key code for the 8 key
-kKeyCode9   EQU  $D0                 ; Key code for the 9 key
+kKeyCodeClr EQU  $A0                 ; Key code for the keypad clear key
+kKeyCodeLft EQU  $A2                 ; Key code for the keypad left key
+kKeyCodeRgt EQU  $A3                 ; Key code for the keypad right key
+kKeyCodeBsp EQU  $C5                 ; Key code for the backspace key
+kKeyCodeEnt EQU  $C6                 ; Key code for the enter key
+kKeyCodeRet EQU  $C8                 ; Key code for the return key
+kKeyCodeSpc EQU  $DC                 ; Key code for the space bar
+kKeyCodeTab EQU  $F8                 ; Key code for the tab key
+kKeyCode1   EQU  $F4                 ; Key code for the main keyboard 1 key
+kKeyCode2   EQU  $F1                 ; Key code for the main keyboard 2 key
+kKeyCode3   EQU  $F2                 ; Key code for the main keyboard 3 key
+kKeyCode4   EQU  $F3                 ; Key code for the main keyboard 4 key
+kKeyCode5   EQU  $E4                 ; Key code for the main keyboard 5 key
+kKeyCode6   EQU  $E1                 ; Key code for the main keyboard 6 key
+kKeyCode7   EQU  $E2                 ; Key code for the main keyboard 7 key
+kKeyCode8   EQU  $E3                 ; Key code for the main keyboard 8 key
+kKeyCode9   EQU  $D0                 ; Key code for the main keyboard 9 key
+kKeyCode0   EQU  $D1                 ; Key code for the main keyboard 0 key
+kKeyCodePd1 EQU  $CD                 ; Key code for the keypad 1 key
+kKeyCodePd2 EQU  $AD                 ; Key code for the keypad 2 key
+kKeyCodePd3 EQU  $AE                 ; Key code for the keypad 3 key
+kKeyCodePd4 EQU  $A8                 ; Key code for the keypad 4 key
+kKeyCodePd5 EQU  $A9                 ; Key code for the keypad 5 key
+kKeyCodePd6 EQU  $AA                 ; Key code for the keypad 6 key
+kKeyCodePd7 EQU  $A4                 ; Key code for the keypad 7 key
+kKeyCodePd8 EQU  $A5                 ; Key code for the keypad 8 key
+kKeyCodePd9 EQU  $A6                 ; Key code for the keypad 9 key
+kKeyCodePd0 EQU  $C9                 ; Key code for the keypad 0 key
 kKeyCodeA   EQU  $F0                 ; Key code for the A key
 kKeyCodeB   EQU  $EE                 ; Key code for the B key
 kKeyCodeC   EQU  $ED                 ; Key code for the C key
 kKeyCodeD   EQU  $FB                 ; Key code for the D key
 kKeyCodeE   EQU  $E0                 ; Key code for the E key
 kKeyCodeF   EQU  $E9                 ; Key code for the F key
+kKeyCodeG   EQU  $EA                 ; Key code for the G key
+kKeyCodeH   EQU  $EB                 ; Key code for the H key
+kKeyCodeI   EQU  $D3                 ; Key code for the I key
+kKeyCodeJ   EQU  $D4                 ; Key code for the J key
+kKeyCodeK   EQU  $D5                 ; Key code for the K key
+kKeyCodeL   EQU  $D9                 ; Key code for the L key
+kKeyCodeM   EQU  $D8                 ; Key code for the M key
+kKeyCodeN   EQU  $EF                 ; Key code for the N key
+kKeyCodeO   EQU  $DF                 ; Key code for the O key
+kKeyCodeP   EQU  $C4                 ; Key code for the P key
+kKeyCodeQ   EQU  $F5                 ; Key code for the Q key
+kKeyCodeR   EQU  $E5                 ; Key code for the R key
+kKeyCodeS   EQU  $F6                 ; Key code for the S key
+kKeyCodeT   EQU  $E6                 ; Key code for the T key
+kKeyCodeU   EQU  $D2                 ; Key code for the U key
+kKeyCodeV   EQU  $EC                 ; Key code for the V key
+kKeyCodeW   EQU  $F7                 ; Key code for the W key
+kKeyCodeX   EQU  $FA                 ; Key code for the X key
+kKeyCodeY   EQU  $E7                 ; Key code for the Y key
+kKeyCodeZ   EQU  $F9                 ; Key code for the Z key
+kKeyCodeSla EQU  $CC                 ; Key code for the / key
 
 kWIONoDisk  EQU  $01                 ; WIDGETIO error: no disk present
 kWIOBusy    EQU  $02                 ; WIDGETIO error: disk won't deassert BSY

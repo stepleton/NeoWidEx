@@ -162,7 +162,7 @@ UILOOP:
     LEA     sFormTest,A0
     LEA     sFormTestPrompts,A1
     LEA     sFormTestInitialVals,A2
-    SUBA.L  A3,A3
+    LEA     sFormTestBounds,A3
     BSR     FORM
     BRA     UILOOP
 
