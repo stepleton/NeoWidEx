@@ -687,7 +687,7 @@ z_FPriorValue:                       ; Temporary storage for an old field value
 sFormHelp:
     DC.B    'TAB/RET-NEXT FIELD. CLEAR-RESET FIELD. ENTER-SUBMIT. Q-CANCEL.',0
 sFormOutOfBounds:
-    DC.B    ' IS OUT OF BOUNDS. MAX VALUE HERE IS ',0
+    DC.B    ' IS OUT OF BOUNDS -- MAX VALUE HERE IS ',0
 
 * ### EXAMPLE FORMS INVOCATION
 *
@@ -720,9 +720,9 @@ sFormOutOfBounds:
 *     DC.L    $00001314,$21222324,$00323334,$00000044
 * sFormTestBounds:
 *     DC.L    $00007FFF,$7FFFFFFF,$007FFFFF,$0000007F
-*
+* 
 * ### EXAMPLE FORMS DATA (BOOLEAN FIELDS)
-*
+* 
 * sBoolTest:
 *     DC.B    $0D
 *     DC.B    '  --- A FORM WITH BOOLS ---',$0D
@@ -743,7 +743,6 @@ sFormOutOfBounds:
 *     DC.L    $00000001,$00000000,$00000001,$000000cd
 * sBoolTestBounds:
 *     DC.L    $00000001,$000000FF,$00000001,$000000fe
-
 
 ** (Back to the code section) **
     SECTION kSecCode
