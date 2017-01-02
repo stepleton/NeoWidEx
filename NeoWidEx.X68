@@ -261,7 +261,10 @@ sMainMenu:
     DC.B    'PARK HEADS    D',0
     DC.B    'THANKS        E',0
     DC.B    'QUIT          F',0
-    DC.B    0                        ; End of menu.
+    DC.B    0                        ; End of menu
+    DC.B    $06                      ; Divider after item 6
+    DC.B    $0D                      ; Divider after item 13
+    DC.B    0                        ; No more dividers
 
 
     PAGE

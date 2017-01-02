@@ -51,7 +51,9 @@ MAKEWORLD:
     ; Notes:
     ;   Menu items will be given the hotkeys 1,2,...,9,A,B,...,Z.
     ;   The menu string table is expected to be a contiguous, null-terminated
-    ;       sequence of null-terminated strings.
+    ;       sequence of null-terminated strings, followed by a contiguous,
+    ;       null-terminated list of bytes indicating which menu items (counting
+    ;       up from 1) should be followed by a halftone divider line.
     ;   The first string in the table is the menu title and is not considered
     ;       when finding the number and max width of menu items
     ;   Places the number of menu items onto the stack, followed by the width
@@ -109,8 +111,27 @@ MENU:
     LEA     dMenuIds,A4              ; Main menu IDs
     JSR     kMakeMenu                ; Draw the menu items
 
+    ; Draw divider lines
+    ADDQ.L  #1,A3                    ; Advance past menu null terminator
+.dl TST.B   (A3)                     ;   Done with dividers?
+    BEQ.S   .ui                      ;   Yes, skip ahead to get user input
+    CLR.L   D1                       ;   We'll compute line screen address in D1
+    MOVE.B  (A3)+,D1                 ;   Copy divider menu item to D1
+    MULU.W  #(1+kCharHeight),D1      ;   Multiply by rows per char
+    ADDQ.W  #1,D1                    ;   Add one more row for alignment
+    MULU.W  #kRowBytes,D1            ;   Multiply by bytes per row
+    ADD.L   #kMenuStart,D1           ;   Add offset of first byte of menu
+    ADD.L   kScreen,D1               ;   Add absolute base of video memory
+    MOVE.L  D1,A1                    ;   Completed address into A1
+    MOVE.B  #$D5,(A1)+               ;   First divider byte keeps left edge dark
+    MOVE.W  D0,D2                    ;   Copy menu width to D2
+    SUBQ.B  #2,D2                    ;   Subtract 2 to make a loop iterator
+.db MOVE.B  #$55,(A1)+               ;     Draw one byte's worth of divider
+    DBRA    D2,.db                   ;     Loop until menu width complete
+    BRA.S   .dl                      ;   On to next divider
+
     ; Get user input
-    JSR     kCrsrDsply               ; Redisplay mouse cursor
+.ui JSR     kCrsrDsply               ; Redisplay mouse cursor
     CLR.L   D0                       ; Clear kGetInput result
     JSR     kGetInput                ; Get user input
     BCC.S   .ok                      ; No problems; process user input
