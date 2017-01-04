@@ -24,6 +24,7 @@
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 CMD_Soft_Reset:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
+    CLR.B   zHaveInfo                ; Resetting? May as well refresh our info
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SOFT RESET ---'>
     MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdSoftReset,A0         ; Location of the command template in RAM

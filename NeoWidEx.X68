@@ -94,6 +94,12 @@ UILOOP:
     BEQ     .me
     CMPI.B  #kKeyCodeF,D0
     BEQ     .mf
+    CMPI.B  #kKeyCodeG,D0
+    BEQ     .mg
+    CMPI.B  #kKeyCodeH,D0
+    BEQ     .mh
+    CMPI.B  #kKeyCodeI,D0
+    BEQ     .mi
 
     BRA     UILOOP                   ; Unrecognised choice; wait for user again
 
@@ -162,13 +168,28 @@ UILOOP:
     BSR     CMD_Send_Park
     BRA     UILOOP
 
-    ; Main loop option 14: Show thanks
-.me BSR     _UINEWLINE
+    ; Main loop option 14: Initialise spare table
+.me BSR    _UINEWLINE
+    BSR    CMD_Initialize_SpareTable
+    BRA    UILOOP
+
+    ; Main loop option 15: Format drive
+.mf BSR     _UINEWLINE
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'NOT YET...'>
+    BRA     UILOOP
+
+    ; Main loop option 15: Format one track
+.mg BSR     _UINEWLINE
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'STAY TUNED...'>
+    BRA     UILOOP
+
+    ; Main loop option 17: Show thanks
+.mh BSR     _UINEWLINE
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
     BRA     UILOOP
 
-    ; Main loop option 15: Quit and return to the ROM
-.mf mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    ; Main loop option 18: Quit and return to the ROM
+.mi mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
 
@@ -206,6 +227,8 @@ RAWPRINT:
     INCLUDE NeoWidEx_IO.X68
 
     INCLUDE NeoWidEx_CMD_Diag_Read.X68
+
+    INCLUDE NeoWidEx_CMD_Initialize_SpareTable.X68
 
     INCLUDE NeoWidEx_CMD_Read_Controller_Status.X68
 
@@ -259,11 +282,15 @@ sMainMenu:
     DC.B    'SOFT RESET    B',0
     DC.B    'RESET SERVO   C',0
     DC.B    'PARK HEADS    D',0
-    DC.B    'THANKS        E',0
-    DC.B    'QUIT          F',0
+    DC.B    'INIT SPR TBL  E',0
+    DC.B    'FORMAT        F',0
+    DC.B    'FORMAT TRACK  G',0
+    DC.B    'THANKS        H',0
+    DC.B    'QUIT          I',0
     DC.B    0                        ; End of menu
     DC.B    $06                      ; Divider after item 6
-    DC.B    $0D                      ; Divider after item 13
+    DC.B    $0D                      ; Divider after item D
+    DC.B    $10                      ; Divider after item G
     DC.B    0                        ; No more dividers
 
 

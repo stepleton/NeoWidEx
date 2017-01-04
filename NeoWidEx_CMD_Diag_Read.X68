@@ -59,7 +59,8 @@ CMD_Diag_Read:
 .go MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdDiagRead,A0          ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
-    CLR.W   zWIOReadLen              ; No command in this fike reads bytes
+    MOVE.W  zBlockSize,zWIOReadLen   ; Read a whole block from the Widget
+    MOVE.L  #zSectorTag,zWIOReadPtr  ; Read into this memory location
     CLR.W   zWIOWriteLen             ; No command in this file writes bytes
     BSR     WIDGETIO                 ; Issue command
     BEQ     .ex                      ; All OK? Go check read exception register
@@ -69,10 +70,12 @@ CMD_Diag_Read:
     ; overwrite it in investigations to follow. This way the user can still
     ; inspect it for clues.
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  RAW STANDARD STATUS-'>,lx
+    CLR.B   zHaveInfo                ; Could spares change? Force info refresh
 
     ; Get exception registers from Widget
 .ex MOVE.B  #3,D0                    ; This command is three bytes long
     LEA     s_CDiagReadStatusExp,A0  ; Location of the command template in RAM
+    CLR.W   zWIOReadLen              ; Remaining cmds in this file read no bytes
     BSR     WIDGETCMD                ; Construct actual command in RAM
     BSR     WIDGETIO                 ; Issue command
     BEQ     .rx                      ; All OK? Examine read exception register
@@ -86,6 +89,7 @@ CMD_Diag_Read:
     MOVE.B  kStdStatus,-(A7)         ; Error! Read-exception register onto stack
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_CDiagReadExceptionErr
     mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,<$0D,'SEE FULL STATUS FOR DETAILS.'>
+    CLR.B   zHaveInfo                ; Could spares change? Force info refresh
 
     ; Restore standard status in kStdStatus.
 .ss MOVE.B  #3,D0                    ; This command is three bytes long

@@ -24,6 +24,7 @@
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 CMD_Scan:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
+    CLR.B   zHaveInfo                ; Scan can make spares; force info refresh
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SCAN ---'>
     MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdScan,A0              ; Location of the command template in RAM

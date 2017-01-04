@@ -573,7 +573,7 @@ zSectors:
 zFmtOffset:
     DC.B    $FF                      ; Format offset
 zFmtIntrl:
-    DC.B    $FF                      ; Format interleave
+    DC.B    $FF                      ; Format interleave set
 
     ; Counts of spares and bad blocks detected by the diagnostics
 zSparesInUse:
