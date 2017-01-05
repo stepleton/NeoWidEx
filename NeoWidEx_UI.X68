@@ -178,6 +178,28 @@ MENUCOUNT:
     MOVEM.L (A7)+,D0-D2/A3           ; Restore saved registers
     RTS                              ; Back to caller
 
+    ; MENUPICK -- Select item from an array based on MENU choice
+    ; Args:
+    ;   A3: Top of a null-terminated longs array; usually subroutine addresses
+    ;   D0: Keycode associated with the user's menu selection
+    ; Notes:
+    ;   Changes A3.
+    ;   If the zero bit is cleared, A3 points to the array item corresponding to
+    ;       the menu item selected by the user in MENU. If the zero bit is set,
+    ;       no item in the list corresponds to the MENU result.
+    ;   The A3 array must not be longer than the list of keys at dMenuIds.
+MENUPICK:
+    MOVE.L  A0,-(A7)                 ; Save A0 to stack
+    LEA     dMenuIds,A0              ; Point A0 to table of menu item keys
+.lp TST.L   (A3)+                    ;   Item list terminator? Also, increment
+    BEQ.S   .rt                      ;   Yes, back to caller with Z=1
+    CMP.B   (A0)+,D0                 ;   No, do keystrokes match?
+    BNE.S   .lp                      ;   No, on to next item
+    SUBQ.L  #4,A3                    ; Yes, rewind A3 to matching item
+    ANDI.B  #$FB,CCR                 ; Clear zero bit to mark a match
+.rt MOVEA.L (A7)+,A0                 ; Restore A0 without disrupting flags
+    RTS                              ; Back to caller
+
     ; BSUBDISPMSG -- Print a string, substituting bits from D1 where directed
     ; Args:
     ;   A3: memory address of string to print
@@ -400,6 +422,9 @@ dMenuIds:
     DC.B    kKeyCodeG                ; Same, for G
     DC.B    kKeyCodeH                ; Same, for H
     DC.B    kKeyCodeI                ; Same, for I
+    DC.B    kKeyCodeJ                ; Same, for J
+    DC.B    kKeyCodeK                ; Same, for K
+    DC.B    kKeyCodeL                ; Same, for L
     
     DS.W    0                        ; Force even alignment for following data
 

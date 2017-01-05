@@ -24,11 +24,11 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $7000                    ; Various numerical data items live here
+    ORG     $7800                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $7100                    ; Structured scratch space
+    ORG     $7900                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $7300                    ; Program strings bring up the rear
+    ORG     $7B00                    ; Program strings bring up the rear
     SECTION kSecCode
 
 
@@ -40,8 +40,6 @@
 
     PAGE
 * NeoWidEx code ============================================
-    OPT     NOMEX                    ; Expand no macros in listings
-  ; OPT     MEX                      ; Expand all macros in listings
 
 NEOWIDEX:
     ; ## 0. Eject the floppy disk ##
@@ -57,139 +55,19 @@ ROMCHECK:
 
     ; ## 2. Set up the user interface ##
 INIT:
-    JSR     MAKEWORLD                ; Draw the UI; say hello
+    BSR     MAKEWORLD                ; Draw the UI; say hello
 
     ; ## 3. Main user-interface loop ##
 UILOOP:
     LEA     sMainMenu,A3             ; Point A3 to main menu strings
-    JSR     MENU                     ; Draw menu and get the user's choice
-
-    CMPI.B  #kKeyCode1,D0            ; Recognised key codes trigger jumps...
-    BEQ     .m1                      ; ...to menu-option handling routines
-    CMPI.B  #kKeyCode2,D0
-    BEQ     .m2
-    CMPI.B  #kKeyCode3,D0
-    BEQ     .m3
-    CMPI.B  #kKeyCode4,D0
-    BEQ     .m4
-    CMPI.B  #kKeyCode5,D0
-    BEQ     .m5
-    CMPI.B  #kKeyCode6,D0
-    BEQ     .m6
-    CMPI.B  #kKeyCode7,D0
-    BEQ     .m7
-    CMPI.B  #kKeyCode8,D0
-    BEQ     .m8
-    CMPI.B  #kKeyCode9,D0
-    BEQ     .m9
-    CMPI.B  #kKeyCodeA,D0
-    BEQ     .ma
-    CMPI.B  #kKeyCodeB,D0
-    BEQ     .mb
-    CMPI.B  #kKeyCodeC,D0
-    BEQ     .mc
-    CMPI.B  #kKeyCodeD,D0
-    BEQ     .md
-    CMPI.B  #kKeyCodeE,D0
-    BEQ     .me
-    CMPI.B  #kKeyCodeF,D0
-    BEQ     .mf
-    CMPI.B  #kKeyCodeG,D0
-    BEQ     .mg
-    CMPI.B  #kKeyCodeH,D0
-    BEQ     .mh
-    CMPI.B  #kKeyCodeI,D0
-    BEQ     .mi
-
-    BRA     UILOOP                   ; Unrecognised choice; wait for user again
-
-    ; Main loop option 1: Show the status bytes from the last command
-.m1 BSR     _UINEWLINE
-    BSR     STATUSPRINT
-    BRA     UILOOP
-
-    ; Main loop option 2: Print raw tag and sector data
-.m2 BSR     _UINEWLINE
-    BSR     RAWPRINT
-    BRA     UILOOP
-
-    ; Main loop option 3: Get Widget info
-.m3 BSR     _UINEWLINE
-    BSR     WINFOPRINT
-    BRA     UILOOP
-
-    ; Main loop option 4: Print full Widget controller status
-.m4 BSR     _UINEWLINE
-    BSR     CMD_Read_Controller_Status
-    BRA     UILOOP
-
-    ; Main loop option 5: Print full Widget servo status
-.m5 BSR     _UINEWLINE
-    BSR     CMD_Read_Servo_Status
-    BRA     UILOOP
-
-    ; Main loop option 6: Print spare table
-.m6 BSR     _UINEWLINE
-    BSR     SPAREPRINT
-    BRA     UILOOP
-
-    ; Main loop option 7: Set recovery state
-.m7 BSR     _UINEWLINE
-    BSR     CMD_Set_Recovery
-    BRA     UILOOP
-
-    ; Main loop option 8: Send a seek command
-.m8 BSR     _UINEWLINE
-    BSR     CMD_Send_Seek
-    BRA     UILOOP
-
-    ; Main loop option 9: Read current sector
-.m9 BSR     _UINEWLINE
-    BSR     CMD_Diag_Read
-    BRA     UILOOP
-
-    ; Main loop option 10: Perform a surface scan
-.ma BSR     _UINEWLINE
-    BSR     CMD_Scan
-    BRA     UILOOP
-
-    ; Main loop option 11: Soft-reset the Widget
-.mb BSR     _UINEWLINE
-    BSR     CMD_Soft_Reset
-    BRA     UILOOP
-
-    ; Main loop option 12: Reset the servo
-.mc BSR     _UINEWLINE
-    BSR     CMD_Reset_Servo
-    BRA     UILOOP
-
-    ; Main loop option 13: Park heads
-.md BSR     _UINEWLINE
-    BSR     CMD_Send_Park
-    BRA     UILOOP
-
-    ; Main loop option 14: Initialise spare table
-.me BSR    _UINEWLINE
-    BSR    CMD_Initialize_SpareTable
-    BRA    UILOOP
-
-    ; Main loop option 15: Format drive
-.mf BSR     _UINEWLINE
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'NOT YET...'>
-    BRA     UILOOP
-
-    ; Main loop option 15: Format one track
-.mg BSR     _UINEWLINE
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'STAY TUNED...'>
-    BRA     UILOOP
-
-    ; Main loop option 17: Show thanks
-.mh BSR     _UINEWLINE
-    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
-    BRA     UILOOP
-
-    ; Main loop option 18: Quit and return to the ROM
-.mi mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    BSR     MENU                     ; Draw menu and get the user's choice
+    LEA     dMenuHandlers,A3         ; Point A3 to menu handler table
+    BSR     MENUPICK                 ; Find menu handler for user's choice
+    BEQ.S   UILOOP                   ; User's menu choice invalid; try again
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Print a newline to space output
+    MOVE.L  (A3),A3                  ; Load handler address into A3
+    JSR     (A3)                     ; Call handler
+    BRA.S   UILOOP                   ; And round again for the next user choice
 
     ; ## 4. Subroutines etc. ##
 
@@ -207,7 +85,7 @@ _UINEWLINE:
     ;   (none)
     ; Notes:
     ;   Trashes A0.
-RAWPRINT:
+_RAWPRINT:
     mResetP                          ; Reset paging
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DATA FROM LAST READ ---'>
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW TAG DATA'>
@@ -218,6 +96,33 @@ RAWPRINT:
     mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#128,endl
     RTS                              ; Back to caller
 
+    ; _THANKS -- Print acknowledgement message.
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   (none)
+_THANKS:
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
+    RTS
+
+    ; _QUIT -- Quit NeoWidEx.
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Never returns; quits to the ROM monitor.
+_QUIT:
+    ADDQ.L  #4,A7                    ; Dump return address; probably not needed
+    mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+
+    ; _NOTYET -- Placeholder for as-yet unimplemented code
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   TODO: Delete this when no longer in use.
+_NOTYET:
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SORRY... NOT IMPLEMENTED YET'>
+    RTS
+
     INCLUDE NeoWidEx_WIDGETINFO.X68
 
     INCLUDE NeoWidEx_UI.X68
@@ -227,6 +132,8 @@ RAWPRINT:
     INCLUDE NeoWidEx_IO.X68
 
     INCLUDE NeoWidEx_CMD_Diag_Read.X68
+
+    INCLUDE NeoWidEx_CMD_Diag_Write.X68
 
     INCLUDE NeoWidEx_CMD_Initialize_SpareTable.X68
 
@@ -254,13 +161,33 @@ dTargetRom:                          ; ROM version expected by this build
     DC.B    $02                      ; First byte of expected ROM version
     DC.B    kBootRom                 ; Second byte of expected ROM version
 
+    DS.W    0                        ; Force even alignment for what follows
+dMenuHandlers:
+    DC.L    STATUSPRINT
+    DC.L    _RAWPRINT
+    DC.L    WINFOPRINT
+    DC.L    CMD_Read_Controller_Status
+    DC.L    CMD_Read_Servo_Status
+    DC.L    SPAREPRINT
+    DC.L    CMD_Set_Recovery
+    DC.L    CMD_Send_Seek
+    DC.L    CMD_Diag_Read
+    DC.L    CMD_Diag_Write
+    DC.L    CMD_Scan
+    DC.L    CMD_Soft_Reset
+    DC.L    CMD_Reset_Servo
+    DC.L    CMD_Send_Park
+    DC.L    CMD_Initialize_SpareTable
+    DC.L    _NOTYET
+    DC.L    _NOTYET
+    DC.L    _THANKS
+    DC.L    _QUIT
+    DC.L    $00000000                ; Null terminator
+
 
     PAGE
 * NeoWidEx scratch data allocation =========================
     SECTION kSecScratch
-
-zReturnCode:
-    DC.B    $00                      ; Return code for various subroutines
 
 
     PAGE
@@ -278,19 +205,20 @@ sMainMenu:
     DC.B    'SET RECOVERY  7',0
     DC.B    'SEEK          8',0
     DC.B    'READ AT SEEK  9',0
-    DC.B    'SCAN          A',0
-    DC.B    'SOFT RESET    B',0
-    DC.B    'RESET SERVO   C',0
-    DC.B    'PARK HEADS    D',0
-    DC.B    'INIT SPR TBL  E',0
-    DC.B    'FORMAT        F',0
-    DC.B    'FORMAT TRACK  G',0
-    DC.B    'THANKS        H',0
-    DC.B    'QUIT          I',0
+    DC.B    'WRITE AT SEEK A',0
+    DC.B    'SCAN          B',0
+    DC.B    'SOFT RESET    C',0
+    DC.B    'RESET SERVO   D',0
+    DC.B    'PARK HEADS    E',0
+    DC.B    'INIT SPR TBL  F',0
+    DC.B    'FORMAT        G',0
+    DC.B    'FORMAT TRACK  H',0
+    DC.B    'THANKS        I',0
+    DC.B    'QUIT          J',0
     DC.B    0                        ; End of menu
     DC.B    $06                      ; Divider after item 6
-    DC.B    $0D                      ; Divider after item D
-    DC.B    $10                      ; Divider after item G
+    DC.B    $0E                      ; Divider after item E
+    DC.B    $11                      ; Divider after item H
     DC.B    0                        ; No more dividers
 
 

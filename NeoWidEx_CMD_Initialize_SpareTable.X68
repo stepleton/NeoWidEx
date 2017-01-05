@@ -88,6 +88,7 @@ CMD_Initialize_SpareTable:
 .qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
     RTS                              ; Back to caller
 
+
     PAGE
 * NeoWidEx Initialize_SpareTable scratch data allocation ===
     SECTION kSecScratch
