@@ -456,6 +456,7 @@ mPrint      MACRO
     ;   \3: Number of bytes to copy
     ; Notes:
     ;   Behaviour is undefined if source and destination memory regions overlap.
+    ;   Will not work if the destination address is A0.
 mMemCpy     MACRO
       MOVEM.L  A0-A1,-(A7)           ; Save address registers
       MOVEM.W  D0,-(A7)              ; Save data register

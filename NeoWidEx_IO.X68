@@ -249,7 +249,7 @@ WIDGETPERROR:
 
 
     PAGE
-* NeoWidEx disk I/O scratch data allocation =================
+* NeoWidEx disk I/O scratch data allocation ================
     SECTION kSecScratch
 
 zWIOError:
@@ -269,7 +269,7 @@ zWIOWritePtr:
 
 
     PAGE
-* NeoWidEx Reset_Servo strings ==============================
+* NeoWidEx disk I/O strings =================================
     SECTION kSecStrings
 
 sWIOErrStrings:

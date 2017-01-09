@@ -326,9 +326,9 @@ PAGEDRTS:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'...STOPPED...'>
 .rt RTS                              ; Back to caller or caller's caller...
 
-    ; HEXB2STR -- Convert D1 byte to a null-terminated hex string at zNumToStr
+    ; HEXB2STR -- Convert D0 byte to a null-terminated hex string at zNumToStr
     ; Args:
-    ;   D1: byte to turn into an ASCII hex string
+    ;   D0: byte to turn into an ASCII hex string
     ; Notes:
     ;   Destroys A3. (But maybe in a useful way...)
     ;   Post-invocation, A3 will point to zNumToStr.
@@ -338,9 +338,9 @@ HEXB2STR:
     m_hb2s                           ; Invoke byte-printing macro
     RTS                              ; Back to caller
 
-    ; HEXB2STR -- Convert D1 word to a null-terminated hex string at zNumToStr
+    ; HEXW2STR -- Convert D0 word to a null-terminated hex string at zNumToStr
     ; Args:
-    ;   D1: word to turn into an ASCII hex string
+    ;   D0: word to turn into an ASCII hex string
     ; Notes:
     ;   Destroys A3. (But maybe in a useful way...)
     ;   Post-invocation, A3 will point to zNumToStr.
@@ -353,9 +353,9 @@ HEXW2STR:
     ROR.W   #8,D0                    ; Rotate low-order byte back to low-order
     RTS                              ; Back to caller
 
-    ; HEX3B2STR --  Convert D1[:3] to a null-terminated hex string at zNumToStr
+    ; HEX3B2STR --  Convert D0[:3] to a null-terminated hex string at zNumToStr
     ; Args:
-    ;   D1: long whose lower three bytes will be turned into an ASCII hex string
+    ;   D0: long whose lower three bytes will be turned into an ASCII hex string
     ; Notes:
     ;   Destroys A3. (But maybe in a useful way...)
     ;   Post-invocation, A3 will point to zNumToStr.
@@ -373,9 +373,9 @@ HEX3B2STR:
     SWAP    D0                       ; Swap low-order word back to low-order
     RTS                              ; Back to caller
 
-    ; HEXL2STR -- Convert D1 long to a null-terminated hex string at zNumToStr
+    ; HEXL2STR -- Convert D0 long to a null-terminated hex string at zNumToStr
     ; Args:
-    ;   D1: long to turn into an ASCII hex string
+    ;   D0: long to turn into an ASCII hex string
     ; Notes:
     ;   Destroys A3. (But maybe in a useful way...)
     ;   Post-invocation, A3 will point to zNumToStr.

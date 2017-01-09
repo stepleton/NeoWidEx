@@ -24,11 +24,11 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $7800                    ; Various numerical data items live here
+    ORG     $8000                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $7900                    ; Structured scratch space
+    ORG     $8800                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $7B00                    ; Program strings bring up the rear
+    ORG     $9000                    ; Program strings bring up the rear
     SECTION kSecCode
 
 
@@ -61,11 +61,15 @@ INIT:
 UILOOP:
     LEA     sMainMenu,A3             ; Point A3 to main menu strings
     BSR     MENU                     ; Draw menu and get the user's choice
-    LEA     dMenuHandlers,A3         ; Point A3 to menu handler table
+    LEA     dMainMenuHandlers,A3     ; Point A3 to menu handler table
     BSR     MENUPICK                 ; Find menu handler for user's choice
     BEQ.S   UILOOP                   ; User's menu choice invalid; try again
-    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Print a newline to space output
     MOVE.L  (A3),A3                  ; Load handler address into A3
+    EXG.L   A3,D0                    ; Swap it with D0 temporarily for this:
+    BCLR.L  #0,D0                    ; Print a CR before we call? (Note CLR)
+    BNE.S   .js                      ; No, skip straight to jump
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a newline to space output
+.js EXG.L   D0,A3                    ; Unswap D0 and A3 for the jump
     JSR     (A3)                     ; Call handler
     BRA.S   UILOOP                   ; And round again for the next user choice
 
@@ -78,22 +82,6 @@ UILOOP:
     ;   Because BSR _UINEWLINE is smaller than a macro.
 _UINEWLINE:
     mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Print newline to space output
-    RTS                              ; Back to caller
-
-    ; RAWPRINT -- Display hex dump of data from last read
-    ; Args:
-    ;   (none)
-    ; Notes:
-    ;   Trashes A0.
-_RAWPRINT:
-    mResetP                          ; Reset paging
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DATA FROM LAST READ ---'>
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW TAG DATA'>
-    LEA     zSectorTag,A0
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#5,endl
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW SECTOR DATA'>
-    LEA     zSectorData,A0
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,#128,endl
     RTS                              ; Back to caller
 
     ; _THANKS -- Print acknowledgement message.
@@ -131,6 +119,8 @@ _NOTYET:
 
     INCLUDE NeoWidEx_IO.X68
 
+    INCLUDE NeoWidEx_BUFFER.X68
+
     INCLUDE NeoWidEx_CMD_Diag_Read.X68
 
     INCLUDE NeoWidEx_CMD_Diag_Write.X68
@@ -162,11 +152,11 @@ dTargetRom:                          ; ROM version expected by this build
     DC.B    kBootRom                 ; Second byte of expected ROM version
 
     DS.W    0                        ; Force even alignment for what follows
-dMenuHandlers:
-    DC.L    STATUSPRINT
-    DC.L    _RAWPRINT
-    DC.L    WINFOPRINT
-    DC.L    CMD_Read_Controller_Status
+dMainMenuHandlers:                   ; Addresses of handlers for each of the...
+    DC.L    STATUSPRINT              ; ...menu items in sMainMenu
+    DC.L    (1+BUFFER)               ; 1+ means don't print a newline before...
+    DC.L    WINFOPRINT               ; ...calling this handler; the LSBit...
+    DC.L    CMD_Read_Controller_Status   ; ...will be cleared before the call
     DC.L    CMD_Read_Servo_Status
     DC.L    SPAREPRINT
     DC.L    CMD_Set_Recovery
@@ -197,7 +187,7 @@ dMenuHandlers:
 sMainMenu:
     DC.B    'COMMANDS',0             ; Menu title
     DC.B    'LAST STATUS   1',0
-    DC.B    'LAST RAW DATA 2',0
+    DC.B    'BUFFER...     2',0
     DC.B    'DRIVE INFO    3',0
     DC.B    'FULL STATUS   4',0
     DC.B    'SERVO STATUS  5',0
