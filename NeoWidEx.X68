@@ -171,7 +171,7 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    _NOTYET
     DC.L    _NOTYET
     DC.L    _THANKS
-    DC.L    _QUIT
+    DC.L    (1+_QUIT)
     DC.L    $00000000                ; Null terminator
 
 

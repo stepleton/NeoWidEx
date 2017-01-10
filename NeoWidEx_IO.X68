@@ -142,7 +142,7 @@ WIDGETIO:
     BEQ.S   .s9                      ; No, skip ahead to read status
 
     ; 7. Writing, so write those bytes
-    MOVE.B  zWIOWriteLen,D0          ; How much to write
+    MOVE.W  zWIOWriteLen,D0          ; How much to write
     MOVE.L  zWIOWritePtr,A3          ; What to write
     BSR.B   _COPYOUT                 ; Write it
 
@@ -265,7 +265,7 @@ zWIOReadPtr:
 zWIOWriteLen:
     DC.W    $FFFF                    ; # of bytes to write
 zWIOWritePtr:
-    DC.W    $FFFFFFFF                ; Pointer to buffer of bytes to write
+    DC.L    $FFFFFFFF                ; Pointer to buffer of bytes to write
 
 
     PAGE
