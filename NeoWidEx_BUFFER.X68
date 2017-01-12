@@ -24,29 +24,12 @@
     ;   Probably destroys most registers; depends on what user chooses to do.
     ;   Will not trash beyond D0-D4/A0-A4.
 BUFFER:
-.lp LEA     sBufferMenu,A3           ; Point A3 to buffer menu strings
-    BSR     MENU                     ; Draw menu and get the user's choice
-    LEA     dBufferMenuHandlers,A3   ; Point A3 to buffer handler table
-    BSR     MENUPICK                 ; Find menu handler for user's choice
-    BEQ.S   .lp                      ; User's menu choice invalid; try again
-    MOVE.L  (A3),A3                  ; Load handler address into A3
-    EXG.L   A3,D0                    ; Swap it with D0 temporarily for this:
-    BCLR.L  #0,D0                    ; Print a CR before we call? (Note CLR)
-    BNE.S   .js                      ; No, skip straight to jump
-    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a newline to space output
-.js EXG.L   D0,A3                    ; Unswap D0 and A3 for the jump
-    JSR     (A3)                     ; Call handler
-    BRA.S   .lp                      ; And round again for the next user choice
-
-    ; _GOBACK -- Return to caller's caller
-    ; Args:
-    ;   (none)
-    ; Notes:
-    ;   Will NOT work if the subroutine that called _GOBACK places ANYTHING
-    ;       on the stack prior to the BSR or JSR to _GOBACK.
-_GOBACK:
-    ADDQ.L  #4,A7                    ; Drop caller's return address
-    RTS                              ; Return to caller's caller
+    MOVE.L  #sBufferMenu,zUiLoopMenu   ; Load UI loop arguments
+    MOVE.L  #dBufferMenuHandlers,zUiLoopMenuHandlers
+    BSR     UILOOP                   ; Execute the UI loop indefinitely
+    BMI.S   BUFFER                   ; If a submenu exited, repeat the UI loop
+    NEG.B   zUiLoopBreak             ; Otherwise, mark this submenu exiting...
+    RTS                              ; ...and go back to main menu
 
     ; _RAWPRINT -- Display hex dump of data in the disk data buffer, with CRC
     ; Args:
@@ -374,7 +357,7 @@ _RESIZE:
 
     DS.W    0                        ; Force even alignment for what follows
 dBufferMenuHandlers:                 ; Addresses of handlers for each of the...
-    DC.L    (1+_GOBACK)              ; ...menu items in sMainMenu
+    DC.L    (1+GOBACK)               ; ...menu items in sMainMenu
     DC.L    _RAWPRINT                ; 1+ means don't print a newline before...
     DC.L    _EDIT                    ; ...calling this handler; the LSBit...
     DC.L    _PATTERN                 ; ...will be cleared before the call

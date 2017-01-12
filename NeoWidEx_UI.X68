@@ -45,6 +45,49 @@ MAKEWORLD:
 
     RTS                              ; Back to caller
 
+    ; UILOOP -- Menu-driven UI loop
+    ; Args:
+    ;   zUiLoopMenu: Address of a menu string table (see MENU for details)
+    ;   zUiLoopMenuHandlers: Address of a table of addresses of subroutine
+    ;       handlers for each menu item. Ordinarily, a newline is printed before
+    ;       a handler is called, but if the least significant bit of the
+    ;       handler's address is 1, no newline is printed. (The bit will be
+    ;       cleared prior to calling the handler, of course.)
+    ;   Loops until zUiLoopBreak is nonzero, which should probably only be
+    ;       caused by the GOBACK subroutine.
+    ;   Trashes (minimally) D0-D6/A1-A4, plus whatever the handlers trash.
+    ;      TODO explain weird convention
+UILOOP:
+    MOVEA.L zUiLoopMenu,A3           ; Point A3 to buffer menu strings
+    BSR     MENU                     ; Draw menu and get the user's choice
+    MOVEA.L zUiLoopMenuHandlers,A3   ; Point A3 to buffer handler table
+    BSR     MENUPICK                 ; Find menu handler for user's choice
+    BEQ.S   UILOOP                   ; User's menu choice invalid; try again
+    MOVE.L  (A3),A3                  ; Load handler address into A3
+    EXG.L   A3,D0                    ; Swap it with D0 temporarily for this:
+    BCLR.L  #0,D0                    ; Print a CR before we call? (Note CLR)
+    BNE.S   .js                      ; No, skip straight to jump
+    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a newline to space output
+.js CLR.B   zUiLoopBreak             ; By default, UI loop should not terminate
+    EXG.L   D0,A3                    ; Unswap D0 and A3 for the jump
+    JSR     (A3)                     ; Call handler
+    TST.B   zUiLoopBreak             ; Should UI loop terminate?
+    BEQ.S   UILOOP                   ; No, around again for the next user choice
+    RTS                              ; Yes, back to caller
+
+    ; GOBACK -- Break out of a current submenu to a parent menu
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Will NOT work if the subroutine that called GOBACK places ANYTHING
+    ;       on the stack prior to the BSR or JSR to GOBACK.
+    ;   Main intended use is to implement a "back to main menu" option in
+    ;       UILOOPs that present submenus to users.
+GOBACK:
+    ; A positive value (TODO...)
+    MOVE.B  #$01,zUiLoopBreak        ; Mark that the current UI loop should stop
+    RTS                              ; Return to caller's caller
+
     ; MENU -- Display and solicit (blocking) input from a drop-down menu
     ; Args:
     ;   A3: Address of the menu string table
@@ -440,7 +483,13 @@ zLineCount:
 zStopPaging:
     DC.B    0                        ; If the user hit 'q' to abort the pager
 
+zUiLoopBreak:
+    DC.B    0                        ; Current UI loop should terminate
     DS.W    0                        ; Force even alignment for following data
+zUiLoopMenu:
+    DC.B    '[UiM'                   ; Pointer to UI menu strings table
+zUiLoopMenuHandlers:
+    DC.B    'enu]'                   ; Pointer to UI menu handlers table
 
 
     PAGE

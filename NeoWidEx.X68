@@ -47,42 +47,23 @@ NEOWIDEX:
     JSR     kEjectDisk               ; Eject the disk
 
     ; ## 1. Check the boot ROM version ##
-ROMCHECK:
     MOVE.W  dTargetRom,D0            ; Copy target ROM version to D0
     CMP.W   kRomVWord,D0             ; Compare actual ROM version with target
-    BEQ.S   INIT                     ; It's a match, so initialise NeoWidEx
+    BEQ.S   .go                      ; It's a match, so initialise NeoWidEx
     mFail   #0,<'SORRY... THIS NEOWIDEX WAS BUILT FOR BOOT ROM '>,kBootRom
 
     ; ## 2. Set up the user interface ##
-INIT:
-    BSR     MAKEWORLD                ; Draw the UI; say hello
+.go BSR     MAKEWORLD                ; Draw the UI; say hello
 
     ; ## 3. Main user-interface loop ##
-UILOOP:
-    LEA     sMainMenu,A3             ; Point A3 to main menu strings
-    BSR     MENU                     ; Draw menu and get the user's choice
-    LEA     dMainMenuHandlers,A3     ; Point A3 to menu handler table
-    BSR     MENUPICK                 ; Find menu handler for user's choice
-    BEQ.S   UILOOP                   ; User's menu choice invalid; try again
-    MOVE.L  (A3),A3                  ; Load handler address into A3
-    EXG.L   A3,D0                    ; Swap it with D0 temporarily for this:
-    BCLR.L  #0,D0                    ; Print a CR before we call? (Note CLR)
-    BNE.S   .js                      ; No, skip straight to jump
-    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Yes, print a newline to space output
-.js EXG.L   D0,A3                    ; Unswap D0 and A3 for the jump
-    JSR     (A3)                     ; Call handler
-    BRA.S   UILOOP                   ; And round again for the next user choice
+.ui MOVE.L  #sMainMenu,zUiLoopMenu   ; Load UI loop arguments
+    MOVE.L  #dMainMenuHandlers,zUiLoopMenuHandlers
+    BSR     UILOOP                   ; Execute the UI loop indefinitely
+    BMI.S   .ui                      ; If a submenu exited, repeat the UI loop
+    ; Otherwise, quit NeoWidEx and return to the ROM monitor
+    mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; ## 4. Subroutines etc. ##
-
-    ; _UINEWLINE -- Just prints a newline
-    ; Args:
-    ;   (none)
-    ; Notes:
-    ;   Because BSR _UINEWLINE is smaller than a macro.
-_UINEWLINE:
-    mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; Print newline to space output
-    RTS                              ; Back to caller
 
     ; _THANKS -- Print acknowledgement message.
     ; Args:
@@ -92,15 +73,6 @@ _UINEWLINE:
 _THANKS:
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
     RTS
-
-    ; _QUIT -- Quit NeoWidEx.
-    ; Args:
-    ;   (none)
-    ; Notes:
-    ;   Never returns; quits to the ROM monitor.
-_QUIT:
-    ADDQ.L  #4,A7                    ; Dump return address; probably not needed
-    mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
 
     ; _NOTYET -- Placeholder for as-yet unimplemented code
     ; Args:
@@ -171,7 +143,7 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    _NOTYET
     DC.L    _NOTYET
     DC.L    _THANKS
-    DC.L    (1+_QUIT)
+    DC.L    (1+GOBACK)
     DC.L    $00000000                ; Null terminator
 
 
