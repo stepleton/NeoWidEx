@@ -1,13 +1,13 @@
 *-----------------------------------------------------------
 * Title      : NeoWidEx_MACROS
 * Written by : Tom Stepleton
-* Date       : XX November 2016
+* Date       : XX January 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by
 *   Patrick Schäfer's UsbWidEx hardware tool.
 *   -- This file: macros.
-*      Display subroutines from NeoWidEx_UI must be defined.
+*      Resources from NeoWidEx_UI must be defined.
 *-----------------------------------------------------------
 
     ; mFail -- Fail to ROM monitor
@@ -449,6 +449,32 @@ mPrint      MACRO
               ENDC
             ENDM
 
+    ; mMenuUi -- Execute a drop-down-menu-driven based UI loop
+    ; Args:
+    ;   \1: Address of a menu string table (see MENU for details)
+    ;   \2: Address of a table of addresses of subroutine handlers for each
+    ;       menu item. Ordinarily, a newline is printed before a handler is
+    ;       called, but if the least significant bit of the handler's address
+    ;       is 1, no newline is printed. (The bit will be cleared prior to
+    ;       calling the handler, of course.)
+    ; Notes:
+    ;   Will loop until a user selects a menu option that executes GOBACK.
+    ;   Unless you know what you're doing, both arguments should probably be
+    ;       literal memory locations (as they will be expected to persist
+    ;       through multiple invocations of UILOOP and the handlers. See the
+    ;       definition of UILOOP for more details.
+    ;   If the caller could have been invoked from another UILOOP menu, and if
+    ;       it might change flags before RTSing, it should TST.B zUiLoopBreak
+    ;       just before it actually does return.
+    ;   Trashes (minimally) D0-D6/A1-A4, plus whatever the handlers trash.
+mMenuUi     MACRO
+.l\@  MOVE.L  \1,zUiLoopMenu         ; Load UI loop arguments
+      MOVE.L  \2,zUiLoopMenuHandlers
+      BSR     UILOOP                 ; Execute the UI loop indefinitely
+      BMI.S   .l\@                   ; If a submenu exited, repeat the UI loop
+      NEG.B   zUiLoopBreak           ; Otherwise, mark this menu as exiting
+            ENDM
+
     ; mMemCpy -- Copy bytes from one memory location to another
     ; Args:
     ;   \1: Starting source address
@@ -458,22 +484,22 @@ mPrint      MACRO
     ;   Behaviour is undefined if source and destination memory regions overlap.
     ;   Will not work if the destination address is A0.
 mMemCpy     MACRO
-      MOVEM.L  A0-A1,-(A7)           ; Save address registers
-      MOVEM.W  D0,-(A7)              ; Save data register
+      MOVEM.L A0-A1,-(A7)            ; Save address registers
+      MOVEM.W D0,-(A7)               ; Save data register
             IFNC '\1','A0'
-      MOVEA.L  \1,A0                 ; Copy source address to A0
+      MOVEA.L \1,A0                  ; Copy source address to A0
             ENDC
             IFNC '\2','A1'
-      MOVEA.L  \2,A1                 ; Copy destination address to A1
+      MOVEA.L \2,A1                  ; Copy destination address to A1
             ENDC
             IFNC '\3','D0'
-      MOVE.W   \3,D0                 ; Copy byte count to D0
+      MOVE.W  \3,D0                  ; Copy byte count to D0
             ENDC
-      SUBQ.L   #1,D0                 ; Decrement byte count by 1
-.c\@  MOVE.B   (A0)+,(A1)+           ; Copy next byte from source to dest
-      DBRA     D0,.c\@               ; Loop until done
-      MOVEM.W  (A7)+,D0              ; Restore data register
-      MOVEM.L  (A7)+,A0-A1           ; Restore address registers
+      SUBQ.L  #1,D0                  ; Decrement byte count by 1
+.c\@  MOVE.B  (A0)+,(A1)+            ; Copy next byte from source to dest
+      DBRA    D0,.c\@                ; Loop until done
+      MOVEM.W (A7)+,D0               ; Restore data register
+      MOVEM.L (A7)+,A0-A1            ; Restore address registers
             ENDM
 
     ; mMemSet -- Set bytes in a contiguous memory region to one value
@@ -487,19 +513,19 @@ mMemSet     MACRO
       MOVEM.L A0,-(A7)               ; Save address register
       MOVEM.W D0-D1,-(A7)            ; Save data registers
             IFNC '\1','D0'
-      MOVE.B   \1,D0                 ; Copy source byte to D0
+      MOVE.B  \1,D0                  ; Copy source byte to D0
             ENDC
             IFNC '\2','A0'
-      MOVEA.L  \2,A0                 ; Copy destination address to A0
+      MOVEA.L \2,A0                  ; Copy destination address to A0
             ENDC
             IFNC '\3','D1'
-      MOVE.W   \3,D1                 ; Copy byte count to D1
+      MOVE.W  \3,D1                  ; Copy byte count to D1
             ENDC
-      SUBQ.L   #1,D1                 ; Decrement byte count by 1
-.c\@  MOVE.B   D0,(A0)+              ; Copy next byte from source to dest
-      DBRA     D1,.c\@               ; Loop until done
-      MOVEM.W  (A7)+,D0-D1           ; Restore data register
-      MOVEM.L  (A7)+,A0              ; Restore address register
+      SUBQ.L  #1,D1                  ; Decrement byte count by 1
+.c\@  MOVE.B  D0,(A0)+               ; Copy next byte from source to dest
+      DBRA    D1,.c\@                ; Loop until done
+      MOVEM.W (A7)+,D0-D1            ; Restore data register
+      MOVEM.L (A7)+,A0               ; Restore address register
             ENDM
 
     ; mDump -- Print contiguous bytes, words, or longs, separated by spaces

@@ -56,12 +56,8 @@ NEOWIDEX:
 .go BSR     MAKEWORLD                ; Draw the UI; say hello
 
     ; ## 3. Main user-interface loop ##
-.ui MOVE.L  #sMainMenu,zUiLoopMenu   ; Load UI loop arguments
-    MOVE.L  #dMainMenuHandlers,zUiLoopMenuHandlers
-    BSR     UILOOP                   ; Execute the UI loop indefinitely
-    BMI.S   .ui                      ; If a submenu exited, repeat the UI loop
-    ; Otherwise, quit NeoWidEx and return to the ROM monitor
-    mFail   #0,<'THANKS FOR USING NEOWIDEX...'>
+    mMenuUi #sMainMenu,#dMainMenuHandlers   ; Main menu UI loop
+    mFail   #0,<'THANKS FOR USING NEOWIDEX...'>   ; User has quit!
 
     ; ## 4. Subroutines etc. ##
 

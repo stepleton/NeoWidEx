@@ -45,7 +45,7 @@ MAKEWORLD:
 
     RTS                              ; Back to caller
 
-    ; UILOOP -- Menu-driven UI loop
+    ; UILOOP -- Drop-down-menu-driven UI loop
     ; Args:
     ;   zUiLoopMenu: Address of a menu string table (see MENU for details)
     ;   zUiLoopMenuHandlers: Address of a table of addresses of subroutine
@@ -53,10 +53,29 @@ MAKEWORLD:
     ;       a handler is called, but if the least significant bit of the
     ;       handler's address is 1, no newline is printed. (The bit will be
     ;       cleared prior to calling the handler, of course.)
+    ; Notes:
     ;   Loops until zUiLoopBreak is nonzero, which should probably only be
     ;       caused by the GOBACK subroutine.
+    ;   Not intended to be called directly often; instead, use the mMenuUi
+    ;       macro if possible.
+    ;   Uses a particular invocation convention to support nested submenus
+    ;       without the use of a stack. (This convention is automated by
+    ;       mMenuUi.) First, UILOOP should be called within a loop that
+    ;       refreshes zUiLoopMenu and zUiLoopMenuHandlers prior to calling
+    ;       UILOOP. When UILOOP returns, the caller should repeat the loop only
+    ;       if the N flag is set; otherwise, it should negate zUiLoopBreak and
+    ;       carry on with whatever it was doing. Prior to returning, if flags
+    ;       have changed since the negation, the caller should restore the
+    ;       flags by executing a TST.B zUiLoopBreak.
+    ;   Why the convention? UILOOP exits whenever zUiLoopMenu is nonzero. This
+    ;       can happen in two ways: either the user selected a menu option that
+    ;       called GOBACK, or, if the convention is upheld, then a menu option
+    ;       that itself called UILOOP ended via its own GOBACK call.
+    ;   In the latter case, zUiLoopMenu is negative, the N flag is set, and so
+    ;       we should stay in the current menu and restart UILOOP.
+    ;   In the former case, zUiLoopMenu is positive, and so we should not
+    ;       remain in the current menu.
     ;   Trashes (minimally) D0-D6/A1-A4, plus whatever the handlers trash.
-    ;      TODO explain weird convention
 UILOOP:
     MOVEA.L zUiLoopMenu,A3           ; Point A3 to buffer menu strings
     BSR     MENU                     ; Draw menu and get the user's choice
