@@ -24,12 +24,8 @@
     ;   Probably destroys most registers; depends on what user chooses to do.
     ;   Will not trash beyond D0-D4/A0-A4.
 BUFFER:
-    MOVE.L  #sBufferMenu,zUiLoopMenu   ; Load UI loop arguments
-    MOVE.L  #dBufferMenuHandlers,zUiLoopMenuHandlers
-    BSR     UILOOP                   ; Execute the UI loop indefinitely
-    BMI.S   BUFFER                   ; If a submenu exited, repeat the UI loop
-    NEG.B   zUiLoopBreak             ; Otherwise, mark this submenu exiting...
-    RTS                              ; ...and go back to main menu
+    mMenuUi #sBufferMenu,#dBufferMenuHandlers  ; Buffer menu UI loop
+    RTS                              ; Return to the main menu
 
     ; _RAWPRINT -- Display hex dump of data in the disk data buffer, with CRC
     ; Args:
