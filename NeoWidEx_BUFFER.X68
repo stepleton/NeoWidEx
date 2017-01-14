@@ -1,7 +1,7 @@
 *-----------------------------------------------------------
 * Title      : NeoWidEx
 * Written by : Tom Stepleton
-* Date       : XX November 2016
+* Date       : XX January 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by
@@ -31,32 +31,46 @@ BUFFER:
     ; Args:
     ;   (none)
     ; Notes:
-    ;   Trashes A0.
+    ;   Trashes D0-D2/D5/A0-A1.
 _RAWPRINT:
-    ; Print dump first
+    ; Do setup and print header
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DISK BUFFER CONTENTS ---'>
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW TAG DATA'>
-    LEA     zSectorTag,A0
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,z_BufferTagLongs,endl
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW SECTOR DATA'>
-    LEA     zSectorData,A0
-    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,z_BufferSectorLongs,endl
+    LEA     zSectorTag,A0            ; Starting address of buffer
+    CLR.B   D5                       ; Count up through sectors in buffer
+
+    ; Loop over sectors in buffer
+.lp mResetP                          ;   Reset paging for this new sector
+    ADDQ.B  #1,D5                    ;   Sector count is 1-indexed, so increment
+    MOVEA.L A0,A1                    ;   Save sector starting address for CRC
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW TAG DATA'>  ; delib. not qpendl
+    BSR     _SECTSUFFIX              ;   Say which sector's tag data
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,z_BufferTagLongs,qpendl
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl,<'RAW SECTOR DATA'>
+    BSR     _SECTSUFFIX              ;   Say which sector's sector data
+    mDump.L kCrtRow,kCrtCol,#kFirstCol,A0,z_BufferSectorLongs,qpendl
     ; Compute CRC of tag and data
-    LEA     zSectorTag,A0            ; The CRC calculation starts here
-    CLR.W   D2                       ; The CRC calculation should scan over...
-    MOVE.B  z_BufferTagLongs,D2      ; ...this many longs of tag...
-    ADD.B   z_BufferSectorLongs,D2   ; ...plus this many longs of sector data...
-    LSL.W   #2,D2                    ; ...which is this many bytes
-    BSR     _CRC                     ; Calculate CRC now
-    MOVE.W  D0,-(A7)                 ; Copy CRC onto stack
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'TAG/SECTOR CRC16-'>,hx
-    RTS                              ; Back to caller
+    MOVEA.L A1,A0                    ;   The CRC calculation starts here
+    BSR     _SECTSIZED2              ;   Size of memory to scan in longs to D2
+    LSL.W   #2,D2                    ;   Convert size to bytes
+    BSR     _CRC                     ;   Calculate CRC now
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl  ; qpendl needs an empty stack
+    MOVE.W  D0,-(A7)                 ;   Copy CRC onto stack
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'TAG/SECTOR CRC16-'>,hx
+    ; See if we're done, loop again if not
+    CMP.B   z_BufferNumSectors,D5    ;   All done with looping over sectors?
+    BHS.S   .rt                      ;   Yes, jump to exit
+    MOVE.B  #1,zLineCount            ;   No, force the pager to pause output
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl
+    BRA     .lp                      ;   Round again for another go
+
+.rt RTS                              ; Back to caller
 
     ; _CRC -- Compute 16-bit CRC of some data region
     ; Args:
     ;   D2: Word counting number of bytes of memory region to scan
-    ;   A0: Points to start of memory region to fill
+    ;   A0: Points to start of memory region to scan
     ; Notes:
+    ;   When finished, A0 points just past the memory region scanned
     ;   Trashes D0-D2/A0.
     ;   Computed CRC goes in D0.
 _CRC:
@@ -79,28 +93,37 @@ _CRC:
     ; Args:
     ;   (none)
     ; Notes:
-    ;   Trashes D0-D4/A0-A4.
+    ;   Trashes D0-D5/A0-A4.
     ;   Cancelling _EDIT (by typing 'q' in a form) only prevents inputs from
     ;       the current form from being committed to memory. All previous form
     ;       inputs will have already been saved.
 _EDIT:
-    ; First, edit the tag
+    ; Do setup and print header
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- EDIT BUFFER DATA ---'>
+    LEA     zSectorTag,A1            ; We start at the beginning of the buffer
+    CLR.B   D5                       ; Count up through sectors in buffer
+
+    ; Loop over sectors in buffer
+.lp ADDQ.B  #1,D5                    ;   Sector count is 1-indexed, so increment
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'EDIT SECTOR TAG'>
-    LEA     zSectorTag,A1            ; We will edit the sector tag
-    MOVE.B  z_BufferTagLongs,D0      ; A sector tag has this many longwords
-    MOVE.W  #$0,D1                   ; (For printing) Editing starts at byte 0
-    BSR     _EDITMEM                 ; Edit the sector tag
-    TST.B   zFormIntent              ; Did the user cancel?
-    BEQ.S   .qt                      ; Yes: abort, with printed caveat
+    BSR     _SECTSUFFIX              ;   Say which sector's tag data
+    MOVE.B  z_BufferTagLongs,D0      ;   A sector tag has this many longwords
+    CLR.W   D1                       ;   (For printing) Editing starts at byte 0
+    BSR     _EDITMEM                 ;   Edit the sector tag
+    TST.B   zFormIntent              ;   Did the user cancel?
+    BEQ.S   .qt                      ;   Yes: abort, with printed caveat
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'EDIT SECTOR DATA'>
-    LEA     zSectorData,A1           ; We will edit sector data
-    MOVE.B  z_BufferSectorLongs,D0   ; Sector data has this many longwords
-    MOVE.W  #$0,D1                   ; (For printing) Editing starts at byte 0
-    BSR     _EDITMEM                 ; Edit the sector data
-    TST.B   zFormIntent              ; Did the user cancel?
-    BEQ.S   .qt                      ; Yes: abort, with printed caveat
-    RTS                              ; No, so back to caller
+    BSR     _SECTSUFFIX              ;   Say which sector's sector data
+    MOVE.B  z_BufferSectorLongs,D0   ;   Sector data has this many longwords
+    CLR.W   D1                       ;   (For printing) Editing starts at byte 0
+    BSR     _EDITMEM                 ;   Edit the sector data
+    TST.B   zFormIntent              ;   Did the user cancel?
+    BEQ.S   .qt                      ;   Yes: abort, with printed caveat
+    ; See if we're done, loop again if not
+    CMP.B   z_BufferNumSectors,D5    ;   All done with looping over sectors?
+    BNE     .lp                      ;   No, loop again for the next sector
+    RTS                              ; Yes, back to caller
+
 .qt mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_AbortEdit   ; Ack quit intent
     RTS                              ; Back to caller
 
@@ -119,6 +142,7 @@ _EDIT:
     ;   Cancelling _EDITMEM (by typing 'q' in a form) only prevents inputs from
     ;       the current form from being committed to memory. All previous form
     ;       inputs will have already been saved.
+    ;   When finished, A1 points just past last memory region that was changed.
 _EDITMEM:
     ; Prepare; how many longwords are there to edit?
     MOVE.L  A1,-(A7)                 ; Save memory region address on stack
@@ -214,37 +238,39 @@ _PATTERN:
 
     ; Now fill the buffer with a nice unrolled loop
     LEA     zSectorTag,A0            ; A0 will iterate through the buffer
-    MOVE.B  z_BufferTagLongs,D2      ; Number of longs to fill is tag size...
-    ADD.B   z_BufferSectorLongs,D2   ; ...plus sector size
+    MOVE.B  z_BufferNumSectors,D3    ; Number of sectors in buffer to D3
     MOVE.L  z_LongsToEdit,D1         ; Pattern size into D1
 
-.lp LEA     z_PatternInitialVals,A1  ; Refresh pattern start into A1
-    MOVE.B  D1,D0                    ; Refresh pattern size into D0
+.lo BSR     _SECTSIZED2              ;   Number of longwords to fill to D2
+.li LEA     z_PatternInitialVals,A1  ;     Refresh pattern start into A1
+    MOVE.B  D1,D0                    ;     Refresh pattern size into D0
 
-    MOVE.L  (A1)+,(A0)+              ; Copy first pattern long
-    SUBQ.B  #1,D2                    ; Decrement long count
-    BEQ.S   .rt                      ; All done? Jump to return
-    SUBQ.B  #1,D0                    ; Decrement longs left in pattern
-    BEQ.S   .lp                      ; Pattern over? Back up to restart it
+    MOVE.L  (A1)+,(A0)+              ;     Copy first pattern long
+    SUBQ.W  #1,D2                    ;     Decrement long count
+    BEQ.S   .br                      ;     All done with sector? See what's next
+    SUBQ.B  #1,D0                    ;     Decrement longs left in pattern
+    BEQ.S   .li                      ;     Pattern over? Back up to restart it
 
-    MOVE.L  (A1)+,(A0)+              ; Copy second pattern long
-    SUBQ.B  #1,D2                    ; Decrement long count
-    BEQ.S   .rt                      ; All done? Jump to return
-    SUBQ.B  #1,D0                    ; Decrement longs left in pattern
-    BEQ.S   .lp                      ; Pattern over? Back up to restart it
+    MOVE.L  (A1)+,(A0)+              ;     Copy second pattern long
+    SUBQ.W  #1,D2                    ;     Decrement long count
+    BEQ.S   .br                      ;     All done with sector? See what's next
+    SUBQ.B  #1,D0                    ;     Decrement longs left in pattern
+    BEQ.S   .li                      ;     Pattern over? Back up to restart it
 
-    MOVE.L  (A1)+,(A0)+              ; Copy third pattern long
-    SUBQ.B  #1,D2                    ; Decrement long count
-    BEQ.S   .rt                      ; All done? Jump to return
-    SUBQ.B  #1,D0                    ; Decrement longs left in pattern
-    BEQ.S   .lp                      ; Pattern over? Back up to restart it
+    MOVE.L  (A1)+,(A0)+              ;     Copy third pattern long
+    SUBQ.W  #1,D2                    ;     Decrement long count
+    BEQ.S   .br                      ;     All done with sector? See what's next
+    SUBQ.B  #1,D0                    ;     Decrement longs left in pattern
+    BEQ.S   .li                      ;     Pattern over? Back up to restart it
 
-    MOVE.L  (A1)+,(A0)+              ; Copy fourth pattern long
-    SUBQ.B  #1,D2                    ; Decrement long count
-    BEQ.S   .rt                      ; All done? Jump to return
-    BRA.S   .lp                      ; And another round through the pattern
+    MOVE.L  (A1)+,(A0)+              ;     Copy fourth pattern long
+    SUBQ.W  #1,D2                    ;     Decrement long count
+    BEQ.S   .br                      ;     All done with sector? See what's next
+    BRA.S   .li                      ;     And another round through the pattern
 
-.rt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
+.br SUBQ.B  #1,D3                    ;   Decrement sectors; all done?
+    BNE.S   .lo                      ;   No, on to the next sector
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
     RTS                              ; Return to caller
 
 .qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Ack quit intent
@@ -274,11 +300,12 @@ _RANDOM:
 .go MOVE.L  zFieldValues,D0          ; Copy random seed to D0
     NOT.W   D0                       ; Invert its bits
     LEA     zSectorTag,A0            ; Starting address for fill
-    CLR.W   D2                       ; The amount of memory to fill...
-    MOVE.B  z_BufferTagLongs,D2      ; ...should be tag size...
-    ADD.B   z_BufferSectorLongs,D2   ; ...plus sector size...
-    LSL.W   #2,D2                    ; ...as bytes
-    BSR     _LFSRFILL                ; Call random filler
+    MOVE.B  z_BufferNumSectors,D4    ; Number of sectors to fill
+.lp BSR     _SECTSIZED2              ;   Size of memory to fill in longs to D2
+    LSL.W   #2,D2                    ;   Convert longwords to bytes
+    BSR     _LFSRFILL                ;   Call random filler
+    SUBQ.B  #1,D4                    ;   Decrement sectors; all done?
+    BNE.S   .lp                      ;   No, on to the next sector
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
     RTS                              ; Back to caller
 
@@ -288,8 +315,9 @@ _RANDOM:
     ;   D2: Word counting number of bytes to fill
     ;   A0: Points to start of memory region to fill
     ; Notes:
-    ;   Trashes D0-D3/A0.
     ;   http://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
+    ;   When finished, A0 points just past the memory region filled
+    ;   Trashes D0-D3/A0.
 _LFSRFILL:
     TST.W   D2                       ; What if caller didn't want any bytes?
 .lo BEQ.S   .rt                      ;   No bytes left to fill? Return
@@ -319,8 +347,9 @@ _LFSRFILL:
     ; Notes:
     ;   Trashes D0-D4/A0-A4.
 _RESIZE:
-    MOVE.B  z_BufferTagLongs,(3+z_ResizeInitialVals)     ; Current settings...
-    MOVE.B  z_BufferSectorLongs,(7+z_ResizeInitialVals)  ; ...into initial vals
+    MOVE.B  z_BufferNumSectors,(3+z_ResizeInitialVals)     ; Current settings...
+    MOVE.B  z_BufferTagLongs,(7+z_ResizeInitialVals)       ; ...go into form...
+    MOVE.B  z_BufferSectorLongs,(11+z_ResizeInitialVals)   ; ...initial values
     LEA     s_ResizeForm,A0          ; Prepare FORM args: address of template...
     LEA     s_ResizePrompts,A1       ; ...address of prompt pointer array...
     LEA     z_ResizeInitialVals,A2   ; ...address of initial values array...
@@ -334,17 +363,52 @@ _RESIZE:
     RTS                              ; Back to caller
 
     ; Copy values from form to sizing settings
-.go MOVE.L  zFieldValues,D0          ; Copy tag size to D0
+.go MOVE.L  (zFieldValues),D0        ; Copy tag size to D0
     BEQ.S   .zr                      ; Abort if tag size is nonzero
-    MOVE.L  (4+zFieldValues),D1      ; Copy sector size to D1
+    MOVE.L  (4+zFieldValues),D1      ; Copy tag size to D1
+    BEQ.S   .zr                      ; Abort if tag size is nonzero
+    MOVE.L  (8+zFieldValues),D2      ; Copy sector size to D2
     BEQ.S   .zr                      ; Abort if sector size is nonzero
-    MOVE.B  D0,z_BufferTagLongs      ; Put tag size in place
-    MOVE.B  D1,z_BufferSectorLongs   ; Put sector size in place
+    MOVE.L  (8+zFieldValues),D2      ; Copy sector size to D2
+    BEQ.S   .zr                      ; Abort if sector size is nonzero
+    MOVE.B  D0,z_BufferNumSectors    ; Put number of sectors in place
+    MOVE.B  D1,z_BufferTagLongs      ; Put tag size in place
+    MOVE.B  D2,z_BufferSectorLongs   ; Put sector size in place
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
     RTS
 
 .zr mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SIZES MUST BE NONZERO.'>
     RTS
+
+    ; _SECTSIZED2 -- Load sector size in longwords into D2
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Sector size is only according to the way the user configured the buffer,
+    ;       not according to the drive itself.
+    ;   "Trashes" D2.
+_SECTSIZED2:
+    MOVE.W  D0,-(A7)                 ; Save D0 so we can use it as a temporary
+    CLR.W   D2                       ; Sector size in longwords is...
+    MOVE.B  z_BufferTagLongs,D2      ; ...tag size in longwords...
+    CLR.W   D0                       ; ...plus...
+    MOVE.B  z_BufferSectorLongs,D0   ; ...sector size in longwords...
+    ADD.W   D0,D2                    ; ...making this total
+    MOVE.W  (A7)+,D0                 ; Restore D0 from stack
+    RTS                              ; Back to caller
+
+    ; _SECTSUFFIX -- Print sector (in buffer) being displayed/edited
+    ; Args:
+    ;   D5: Sector being displayed/edited, counting up from 1
+    ; Notes:
+    ;   Printed string is the kind of thing you'd print just after printing
+    ;       "RAW TAG DATA", e.g., hence "SUFFIX".
+    ;   Also shows buffer size in sectors.
+_SECTSUFFIX:
+    MOVE.B  z_BufferNumSectors,-(A7)   ; Number of sectors to stack
+    MOVE.B  D5,-(A7)                 ; Current sector number to stack
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' - SECTOR '>,hhx,<' OF '>,hhx
+    RTS                              ; Back to RAWPRINT
 
 
     PAGE
@@ -353,7 +417,7 @@ _RESIZE:
 
     DS.W    0                        ; Force even alignment for what follows
 dBufferMenuHandlers:                 ; Addresses of handlers for each of the...
-    DC.L    (1+GOBACK)               ; ...menu items in sMainMenu
+    DC.L    (1+GOBACK)               ; ...menu items in sBufferMenu
     DC.L    _RAWPRINT                ; 1+ means don't print a newline before...
     DC.L    _EDIT                    ; ...calling this handler; the LSBit...
     DC.L    _PATTERN                 ; ...will be cleared before the call
@@ -374,6 +438,8 @@ d_LongsToEditBounds:
 * NeoWidEx disk data buffer scratch data allocation ========
     SECTION kSecScratch
 
+z_BufferNumSectors:
+    DC.B    $1                       ; Default number of sectors: 1
 z_BufferTagLongs:
     DC.B    $5                       ; Default tag size: 5 longwords
 z_BufferSectorLongs:
@@ -402,10 +468,11 @@ z_PatternInitialVals:                ; We will remember the user's previous...
 z_ResizeInitialVals:                 ; We will remember the user's previous...
     DC.L    $00000000                ; tag and sector data buffer sizes
     DC.L    $00000000
+    DC.L    $00000000
 
 
     PAGE
-* NeoWidEx Reset_Servo strings ==============================
+* NeoWidEx disk data buffer strings ========================
     SECTION kSecStrings
 
 s_RandomForm:                        ; User form for specifying random seed
@@ -446,13 +513,15 @@ s_AbortEdit:
 s_ResizeForm:                        ; User form for buffer sizing
     DC.B    $0D,'  -- CHANGE BUFFER SIZING --'
     DC.B    $0D,'NOTE--SIZING ONLY AFFECTS THESE BUFFER MANIPULATION COMMANDS.'
-    DC.B    $0D,'   LONGWORDS IN SECTOR TAG-aa   IN SECTOR DATA-ba',0
+    DC.B    $0D,'   NUMBER OF SECTORS-aa'
+    DC.B    $0D,'   LONGWORDS IN SECTOR TAG-ba   IN SECTOR DATA-ca',0
 
     DS.W    0
 s_ResizePrompts:                     ; Form prompts for buffer sizing
-    DC.L    .p1,.p2
-.p1 DC.B    'TAG LONGWORDS',0
-.p2 DC.B    'DATA LONGWORDS',0
+    DC.L    .p1,.p2,.p3
+.p1 DC.B    'SECTORS',0
+.p2 DC.B    'TAG LONGWORDS',0
+.p3 DC.B    'DATA LONGWORDS',0
 
 
 sBufferMenu:
