@@ -46,23 +46,36 @@ SECTOR:
     ;       low-order nibble is used
     ;   A0: Buffer containing the command template string
     ; Notes:
-    ;   The command template string at A0 should start with $01 or $02, and need
+    ;   The command template string at A0 should start with $10 or $20, and need
     ;       not include the checksum at the end. When assembling the "complete"
     ;       string at zWIOCmd, the length nibble is insterted into the first
     ;       byte, and the checksum byte is appended to the end.
     ;   The command string length (inclusive of the checksum byte) is copied to 
     ;       zWIOCmdLen, ready for use with WIDGETIO.
+    ;   The number of read and/or write cycles (always 1 except for Sys_Read and
+    ;       Sys_Write) is copied to zWIORdWrCycles, ready for use with WIDGETIO.
 WIDGETCMD:
+    ; 0. Preliminaries
     MOVEM.L A0-A1,-(A7)              ; Save address registers used
     MOVEM.W D0-D1,-(A7)              ; Save data registers used
     ANDI.W  #$000F,D0                ; Length nibble, and also the counter
     MOVE.B  D0,zWIOCmdLen            ; Copy length to Widget command length
     ADDQ.B  #1,zWIOCmdLen            ; Add 1 to account for the checksum byte
     LEA     zWIOCmd,A1               ; Actual Widget command goes in here
-    MOVE.B  (A0)+,(A1)               ; Copy command byte (first byte)
-    ANDI.B  #$F0,(A1)                ; Blank out low-order nibble...
-    OR.B    D0,(A1)                  ; ...and place length nibble there instead
-    MOVE.B  (A1)+,D1                 ; Copy to D1 to start checksum
+
+    ; 1. Compute number of read and/or write cycles required
+    MOVE.B  #1,zWIORdWrCycles        ; By default, only one read-or-write cycle
+    MOVE.B  (A0)+,D1                 ; First command byte to D1 for examination
+    CMPI.B  #$20,D1                  ; Is this a Sys_* command?
+    BRA.S   .cp                      ; No, skip ahead
+    CMPI.B  #$01,(A0)                ; Is this Sys_Read or Sys_Write?
+    BHI.S   .cp                      ; No, skip ahead
+    MOVE.B  1(A0),zWIORdWrCycles     ; Yes, copy command-specified cycle count
+
+    ; 2. Copy command with correct length nibble and check byte
+.cp ANDI.B  #$F0,D1                  ; Blank first command byte's LSnibble...
+    OR.B    D0,D1                    ; ...and place length nibble there instead
+    MOVE.B  D1,(A1)+                 ; Copy out; checksum started in D1
     SUBQ.W  #2,D0                    ; -1 D0 twice, loop-count remaining bytes
     BMI.S   .rt                      ; If D0 is now negative, no bytes remain
 .lp MOVE.B  (A0),(A1)+               ; Copy current byte to buffer
@@ -78,9 +91,10 @@ WIDGETCMD:
     ; Args:
     ;   zWIOCmdLen: Length of command bytes to send
     ;   zWIOCmd: Command bytes to send
-    ;   zWIOReadLen: Number of bytes to read EXCLUSIVE of status, if any
+    ;   zWIORdWrCycles: Number of data read and/or write cycles; must be >0
+    ;   zWIOReadLen: Number of bytes to read per cycle EXCLUDING status, if any
     ;   zWIOReadPtr: Where bytes read should be stored
-    ;   zWIOWriteLen: Number of bytes to write, if any
+    ;   zWIOWriteLen: Number of bytes to write per cycles, if any
     ;   zWIOWritePtr: Where bytes to write are stored
     ; Notes:
     ;   The Z bit is set iff a failure occurs, and a one-byte error code is
@@ -88,7 +102,11 @@ WIDGETCMD:
     ;   After successful operations, drive status bytes are saved at kStdStatus.
 WIDGETIO:
     ; 0. Preliminaries
-    MOVEM.L D0/D2/A0/A3,-(A7)        ; Save registers used
+    MOVEM.L D0/A0-A3,-(A7)           ; Save registers used
+    MOVEM.W D1-D2,-(A7)              ; Save more registers used, but not as much
+    MOVEA.L zWIOReadPtr,A1           ; Local copy of read pointer
+    MOVEA.L zWIOWritePtr,A2          ; Local copy of write pointer
+    MOVE.B  zWIORdWrCycles,D1        ; Read number of desired read*write* cycles
     m_iOff                           ; Disable interrupts
     CLR.B   zWIOError                ; No errors yet!
 
@@ -125,46 +143,53 @@ WIDGETIO:
     LEA     zWIOCmd,A3               ; Point A3 to command bytes
     BSR     _COPYOUT                 ; Send command bytes to disk
 
-    ; 5. Get acknowledgement handshake
-    LEA     zWIOCmd,A3               ; Rewind A3 to start of command
-    MOVE.B  (A3)+,D2                 ; First byte might be the instruction...
-    CMPI.B  #3,D2                    ; ...if <= 2 ("Legacy" ProFile command)
-    BLO.S   .c5                      ; It is, skip ahead
-    MOVE.B  (A3),D2                  ; It's not; byte 2 is the instruction
-.c5 ADDQ    #2,D2                    ; Expected response is instruction+2
-    JSR     kFindD2                  ; Try the handshake
-    BCC.S   .s6                      ; Success? Keep moving
-    MOVE.B  #kWIOCmdAck,zWIOError    ; Failure! Mark error...
-    BRA.S   .rt                      ; ...and move to Dallas
+    ; 5. Read or write cycle loop begins; get acknowledgement handshake
+.s5 LEA     zWIOCmd,A3               ;   Rewind A3 to start of command
+    MOVE.B  (A3)+,D2                 ;   First byte might be the instruction...
+    CMPI.B  #3,D2                    ;   ...if <= 2 ("Legacy" ProFile command)
+    BLO.S   .c5                      ;   It is, skip ahead
+    MOVE.B  (A3),D2                  ;   It's not; byte 2 is the instruction
+.c5 ADDQ.B  #2,D2                    ;   Expected response is instruction+2
+    JSR     kFindD2                  ;   Try the handshake
+    BCC.S   .s6                      ;   Success? Keep moving
+    MOVE.B  #kWIOCmdAck,zWIOError    ;   Failure! Mark error...
+    BRA.S   .rt                      ;   ...and move to Dallas
 
     ; 6. Reading or writing? If reading, skip ahead to the read
-.s6 TST.W   zWIOWriteLen             ; Anything to write?
-    BEQ.S   .s9                      ; No, skip ahead to read status
+.s6 TST.W   zWIOWriteLen             ;   Anything to write?
+    BEQ.S   .s9                      ;   No, skip ahead to read status
 
     ; 7. Writing, so write those bytes
-    MOVE.W  zWIOWriteLen,D0          ; How much to write
-    MOVE.L  zWIOWritePtr,A3          ; What to write
-    BSR.B   _COPYOUT                 ; Write it
+    MOVE.W  zWIOWriteLen,D0          ;   How much to write
+    MOVE.L  A2,A3                    ;   What to write
+    BSR.B   _COPYOUT                 ;   Write it
+    MOVE.L  A3,A2                    ;   Save new position in write buffer
 
     ; 8. Get data write acknowledgement handshake
-    MOVE.B  #$06,D2                  ; Expected response is $06
-    JSR     kFindD2                  ; Try the handshake
-    BCC.S   .s9                      ; Success? Keep moving
-    MOVE.B  #kWIODataAck,zWIOError   ; Failure! Mark error...
-    BRA.S   .rt                      ; ...and take up golf
+    MOVE.B  #$06,D2                  ;   Expected response is $06
+    JSR     kFindD2                  ;   Try the handshake
+    BCC.S   .s9                      ;   Success? Keep moving
+    MOVE.B  #kWIODataAck,zWIOError   ;   Failure! Mark error...
+    BRA.S   .rt                      ;   ...and take up golf
 
     ; 9. Read status bytes
-.s9 MOVE.W  #4,D0                    ; There are four status bytes
-    LEA     kStdStatus,A3            ; They go in the same place the ROM uses
-    BSR.B   _COPYIN                  ; Copy in status bytes
+.s9 MOVE.W  #4,D0                    ;   There are four status bytes
+    LEA     kStdStatus,A3            ;   They go in the same place the ROM uses
+    BSR.B   _COPYIN                  ;   Copy in status bytes
 
     ; A. Read any other data expected by the caller
-    MOVE.W  zWIOReadLen,D0           ; How many bytes to read
-    MOVE.L  zWIOReadPtr,A3           ; Where to read them to
-    BSR.B   _COPYIN                  ; Read 'em in
+    MOVE.W  zWIOReadLen,D0           ;   How many bytes to read
+    MOVE.L  A1,A3                    ;   Where to read them to
+    BSR.B   _COPYIN                  ;   Read 'em in
+    MOVE.L  A3,A1                    ;   Save new position in read buffer
+
+    ; B. Decrement repeat counter and loop if iterations remain
+    SUBQ.B  #1,D1                    ;   Decrement loop counter
+    BNE.S   .s5                      ;   Back to top if iterations remain
 
 .rt m_iOn                            ; Enable interrupts
-    MOVEM.L (A7)+,D0/D2/A0/A3        ; Restore registers
+    MOVEM.W (A7)+,D1-D2              ; Restore registers
+    MOVEM.L (A7)+,D0/A0-A3           ; Restore more registers
     TST.B   zWIOError                ; Any errors? Set flags
     RTS                              ; Back to caller
 
@@ -208,7 +233,8 @@ _COPYOUT:
     ;   A0: VIA 2 base address
     ;   A3: Where to copy the bytes
     ; Notes:
-    ;   Trashes D0/A3
+    ;   On completion, A3 points just past the copied data.
+    ;   Trashes D0/A3.
 _COPYIN:
     SUBQ.W  #1,D0                    ; Decrement D0 to make it a loop counter
     BMI.S   .rt                      ; D0 was <= 0, so copy no bytes
@@ -258,12 +284,15 @@ zWIOCmdLen:
     DC.B    $FF                      ; Length of command
 zWIOCmd:
     DCB.B   12,'c'                   ; Space for command bytes
+zWIORdWrCycles:
+    DC.B    1                        ; Number of read and/or write cycles
+    DS.W    0                        ; Force word alignment for what follows
 zWIOReadLen:
-    DC.W    $FFFF                    ; # of bytes to read, EXCLUSIVE of status
+    DC.W    $FFFF                    ; # bytes to read/cycle, EXCLUDING status
 zWIOReadPtr:
     DC.L    $FFFFFFFF                ; Pointer to buffer for bytes read
 zWIOWriteLen:
-    DC.W    $FFFF                    ; # of bytes to write
+    DC.W    $FFFF                    ; # bytes to write/cycle
 zWIOWritePtr:
     DC.L    $FFFFFFFF                ; Pointer to buffer of bytes to write
 

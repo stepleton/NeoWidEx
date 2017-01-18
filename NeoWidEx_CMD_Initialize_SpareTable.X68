@@ -107,7 +107,7 @@ z_CIntStbBounds:
 
 
     PAGE
-* NeoWidEx Send_Park strings ================================
+* NeoWidEx Initialize_SpareTable strings ===================
     SECTION kSecStrings
 
 s_CIntStbForm:                       ; User form for command parameters
@@ -116,8 +116,8 @@ s_CIntStbForm:                       ; User form for command parameters
     DS.W    0
 s_CIntStbPrompts:                    ; Form prompts for command parameters
     DC.L    .p1,.p2
-.p1 DC.B    'FORMAT OFFSET',0
-.p2 DC.B    'FORMAT INTERLEAVE',0
+.p1 DC.B    'OFFSET',0
+.p2 DC.B    'INTERLEAVE',0
 
 s_CIntStbConfForm:                   ; User form for confirming command
     DC.B    $0D,'REALLY INITIALISE SPARE TABLE? a',0
