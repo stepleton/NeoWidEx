@@ -25,6 +25,21 @@ WINFOMAYBE:
     BEQ.S   WIDGETINFO               ; No, go run it!
     RTS                              ; Yes, back to the caller.
 
+    ; WINFOSTATUSCHECK -- Invalidate cached Widget info if spare table changes
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Will mark cached WIDGETINFO information invalid if the "spare table was
+    ;       just updated" bit is set in standard status.
+    ;   For best results, run immediately after a command that could update the
+    ;       spare table. Logical reads and writes with recovery mode enabled
+    ;       certainly fall into this category, but other commands may also.
+WINFOSTATUSCHECK:
+    BTST.B  #2,(1+kStdStatus)        ; Was the spare table just updated?
+    BEQ.S   .rt                      ; No, jump to return to caller
+    CLR.B   zHaveInfo                ; Yes; mark Widget info invalid
+.rt RTS                              ; Back to caller
+
     ; WIDGETCHECK -- Run WINFOMAYBE, then bail to caller's caller if no Widget
     ; Args:
     ;   (none)

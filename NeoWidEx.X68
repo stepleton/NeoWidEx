@@ -8,9 +8,6 @@
 *   Patrick Schäfer's UsbWidEx hardware tool.
 *-----------------------------------------------------------
 
-; NOTES TO SELF:
-;   Stack: from $480 to $3E8 --- that's 152 bytes, or 38 longs!
-  
 
     PAGE
 * NeoWidEx Equates =========================================
@@ -93,6 +90,8 @@ _NOTYET:
 
     INCLUDE NeoWidEx_CMD_Diag_Write.X68
 
+    INCLUDE NeoWidEx_CMD_Sys_Read.X68
+
     INCLUDE NeoWidEx_CMD_Initialize_SpareTable.X68
 
     INCLUDE NeoWidEx_CMD_Read_Controller_Status.X68
@@ -124,10 +123,14 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    STATUSPRINT              ; ...menu items in sMainMenu
     DC.L    (1+BUFFER)               ; 1+ means don't print a newline before...
     DC.L    WINFOPRINT               ; ...calling this handler; the LSBit...
-    DC.L    CMD_Read_Controller_Status   ; ...will be cleared before the call
+    DC.L    CMD_Read_Ctrlr_Status    ; ...will be cleared before the call
     DC.L    CMD_Read_Servo_Status
     DC.L    SPAREPRINT
     DC.L    CMD_Set_Recovery
+    DC.L    _NOTYET
+    DC.L    _NOTYET
+    DC.L    CMD_Sys_Read
+    DC.L    _NOTYET
     DC.L    CMD_Send_Seek
     DC.L    CMD_Diag_Read
     DC.L    CMD_Diag_Write
@@ -161,22 +164,28 @@ sMainMenu:
     DC.B    'SERVO STATUS  5',0
     DC.B    'SPARE TABLE   6',0
     DC.B    'SET RECOVERY  7',0
-    DC.B    'SEEK          8',0
-    DC.B    'READ AT SEEK  9',0
-    DC.B    'WRITE AT SEEK A',0
-    DC.B    'SCAN          B',0
-    DC.B    'SOFT RESET    C',0
-    DC.B    'RESET SERVO   D',0
-    DC.B    'PARK HEADS    E',0
-    DC.B    'INIT SPR TBL  F',0
-    DC.B    'FORMAT        G',0
-    DC.B    'FORMAT TRACK  H',0
-    DC.B    'THANKS        I',0
-    DC.B    'QUIT          J',0
+    DC.B    'GENERIC READ  8',0
+    DC.B    'GENERIC WRITE 9',0
+    DC.B    'WIDGET READ   A',0
+    DC.B    'WIDGET WRITE  B',0
+    DC.B    'SEEK          C',0
+    DC.B    'READ AT SEEK  D',0
+    DC.B    'WRITE AT SEEK E',0
+    DC.B    'SCAN          F',0
+    DC.B    'SOFT RESET    G',0
+    DC.B    'RESET SERVO   H',0
+    DC.B    'PARK HEADS    I',0
+    DC.B    'INIT SPR TBL  J',0
+    DC.B    'FORMAT        K',0
+    DC.B    'FORMAT TRACK  L',0
+    DC.B    'THANKS        M',0
+    DC.B    'QUIT          N',0
     DC.B    0                        ; End of menu
     DC.B    $06                      ; Divider after item 6
+    DC.B    $07                      ; Divider after item 7
     DC.B    $0E                      ; Divider after item E
-    DC.B    $11                      ; Divider after item H
+    DC.B    $12                      ; Divider after item I
+    DC.B    $15                      ; Divider after item L
     DC.B    0                        ; No more dividers
 
 

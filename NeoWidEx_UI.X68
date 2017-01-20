@@ -487,6 +487,8 @@ dMenuIds:
     DC.B    kKeyCodeJ                ; Same, for J
     DC.B    kKeyCodeK                ; Same, for K
     DC.B    kKeyCodeL                ; Same, for L
+    DC.B    kKeyCodeM                ; Same, for M
+    DC.B    kKeyCodeN                ; Same, for N
     
     DS.W    0                        ; Force even alignment for following data
 

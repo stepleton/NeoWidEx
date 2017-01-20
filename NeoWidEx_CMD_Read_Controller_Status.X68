@@ -16,13 +16,13 @@
 
 * NeoWidEx Read_Controller_Status code =====================
 
-    ; CMD_Read_Controller_Status -- print ALL the controller statuses
+    ; CMD_Read_Ctrlr_Status -- print ALL the controller statuses
     ; Args:
     ;   (none)
     ; Notes:
     ;   Trashes D0/A0-A1.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
-CMD_Read_Controller_Status:
+CMD_Read_Ctrlr_Status:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
 
     ; First, retrieve and print all controller status longs
@@ -106,7 +106,7 @@ CMD_Read_Controller_Status:
 
     RTS                              ; Back to caller
 
-    ; .ph -- CMD_Read_Controller_Status helper: print title and raw hex bytes
+    ; .ph -- CMD_Read_Ctrlr_Status helper: print title and raw hex bytes
     ; Args:
     ;   A0: address of bitmap display title string
     ;   D0: long whose hex bytes will be printed below the title

@@ -1,65 +1,67 @@
 *-----------------------------------------------------------
-* Title      : NeoWidEx_CMD_Diag_Read
+* Title      : NeoWidEx_CMD_Sys_Read
 * Written by : Tom Stepleton
-* Date       : 2 January 2016
+* Date       : XX January 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by
 *   Patrick Schäfer's UsbWidEx hardware tool.
-*   -- This file: issues the diagnostic read command.
+*   -- This file: issues the Sys_Read command.
 *      Equates from NeoWidEx_DEFS must be defined.
 *      Macros from NeoWidEx_MACROS must be defined.
 *      Resources from NeoWidEx_IO must be defined.
 *      Resources from NeoWidEx_UI_FORMS must be defined.
 *      Resources from NeoWidEx_WIDGETINFO must be defined.
-*      Resources from NeoWidEx_CMD_Send_Seek must be defined.
 *-----------------------------------------------------------
 
 
-* NeoWidEx Diag_Read code ==================================
+* NeoWidEx Sys_Read code ===================================
 
-    ; CMD_Diag_Read -- Attempt the Diag_Read command
+    ; CMD_Sys_Read -- Attempt Sys_Read command
     ; Args:
     ;   (none)
     ; Notes:
     ;   Trashes D0-D4/A0-A4.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
-    ;   Will ask the user if they want to seek somewhere first, in which case
-    ;       calls into CMD_Send_Seek.
-CMD_Diag_Read:
-    BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- READ AT SEEK ---'>
+CMD_Sys_Read:
+  ; BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
+  BSR WINFOMAYBE
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- WIDGET READ ---'>
 
-    ; See if the user wants to seek first. It's usually a good idea, since even
-    ; if they've already seeked, the heads may have been bumped, or have gone
-    ; ahead and parked themselves.
-    LEA     s_CDiagReadForm,A0       ; Prepare FORM args: address of template...
-    LEA     s_CDiagReadPrompts,A1    ; ...address of prompt pointer array...
-    LEA     s_CDiagReadInitialVals,A2  ; ...address of initial values array...
-    SUBA.L  A3,A3                    ; ...and no value bounds specified
+    ; Set form bounds based on drive information
+    CLR.L   D0                       ; Assemble start block bound in D0
+    MOVE.L  zNumBlocks,D0            ; This parameter can't exceed the number...
+    SUBQ.L  #1,D0                    ; ...of blocks minus 1
+    MOVE.L  D0,z_CSysReadBounds      ; Copy to bounds array
+   
+    ; Query user for initialisation parameters
+    LEA     s_CSysReadForm,A0        ; Prepare FORM args: address of template...
+    LEA     s_CSysReadPrompts,A1     ; ...address of prompt pointer array...
+    LEA     z_CSysReadInitialVals,A2   ; ...address of initial values array...
+    LEA     z_CSysReadBounds,A3      ; ...address of value bounds array
     BSR     FORM                     ; Display form; get user input
 
     ; Back from form; did user want to cancel?
     TST.B   zFormIntent              ; Did the user cancel?
-    BNE.S   .ws                      ; No, see if the user wanted to seek
+    BNE.S   .cp                      ; No, go ahead and issue the read command
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
     RTS                              ; Back to caller
 
-    ; Did user want to seek first?
-.ws TST.B   (3+zFieldValues)         ; Check user want-to-seek response
-    BEQ.S   .go                      ; Looks like no; skip ahead to read
-    BSR     CMD_Send_Seek_nobanner   ; Yes; jump into seek code
+    ; Copy parameters into the read command
+.cp mMemCpy #(1+zFieldValues),#(3+zSysReadCmd),#3  ; Copy starting block
+    MOVE.B  (7+zFieldValues),(2+zSysReadCmd)   ; Copy block count
+    BNE.S   .sv                      ; Was it 0? Bail; otherwise move along
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'COUNT MUST BE NONZERO.'>
+    RTS                              ; Back to caller
 
-    ; Did user give up while seeking?
-    TST.B   zFormIntent              ; Did the user cancel?
-    BNE.S   .go                      ; No, seek is now done, go read
-    RTS                              ; Yes, back to caller
+    ; Save parameters to be the default for next time
+.sv mMemCpy #zFieldValues,#z_CSysReadInitialVals,#8
 
-    ; Perform the read
-.go MOVE.B  #2,D0                    ; The command is two bytes long
-    LEA     sCmdDiagRead,A0          ; Location of the command template in RAM
+    ; Execute the read
+    MOVE.B  #6,D0                    ; The command is six bytes long
+    LEA     zSysReadCmd,A0           ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
-    MOVE.W  zBlockSize,zWIOReadLen   ; Read a whole block from the Widget
+    MOVE.W  zBlockSize,zWIOReadLen   ; Read blocks of this size from the Widget
     MOVE.L  #zSectorTag,zWIOReadPtr  ; Read into this memory location
     CLR.W   zWIOWriteLen             ; No command in this file writes bytes
     BSR     WIDGETIO                 ; Issue command
@@ -75,12 +77,12 @@ CMD_Diag_Read:
 
     ; Get exception registers from Widget
 .ex MOVE.B  #3,D0                    ; This command is three bytes long
-    LEA     s_CDiagReadStatusExp,A0  ; Location of the command template in RAM
+    LEA     s_CSysReadStatusExp,A0   ; Location of the command template in RAM
     CLR.W   zWIOReadLen              ; Remaining cmds in this file read no bytes
     BSR     WIDGETCMD                ; Construct actual command in RAM
     BSR     WIDGETIO                 ; Issue command
     BEQ     .rx                      ; All OK? Examine read exception register
-    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_CDiagReadStatusErr0
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_CSysReadStatusErr0
     BSR     WIDGETPERROR             ; Error! Print error message
     BRA     .ss                      ; Skip ahead to get standard status
 
@@ -88,12 +90,12 @@ CMD_Diag_Read:
 .rx CMPI.W  #$2000,kStdStatus        ; A nominal read has register value $2000
     BEQ     .ss                      ; Looks good, skip ahead to get std. status
     MOVE.W  kStdStatus,-(A7)         ; Error! Read-exception register onto stack
-    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_CDiagReadExceptionErr
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_CSysReadExceptionErr
     mPrint  kCrtRow,kCrtCol,#kFirstCol,hx,<$0D,'SEE FULL STATUS FOR DETAILS.'>
 
     ; Restore standard status in kStdStatus.
 .ss MOVE.B  #3,D0                    ; This command is three bytes long
-    LEA     s_CDiagReadStatusStd,A0  ; Command: get standard controller status
+    LEA     s_CSysReadStatusStd,A0   ; Command: get standard controller status
     BSR     WIDGETCMD                ; Construct actual command in RAM
     BSR     WIDGETIO                 ; Issue command
     BEQ     .ok                      ; All OK? Advance to return to caller
@@ -103,34 +105,44 @@ CMD_Diag_Read:
 .ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
     RTS                              ; Back to caller
 
+    PAGE
+* NeoWidEx Sys_Read scratch data allocation ================
+    SECTION kSecScratch
+
+zSysReadCmd:
+    DC.B    $20,$00,$00,$00,$00,$00  ; Command; last four bytes are alterable
+    DS.W    0                        ; Force even alignment for following data
+
+z_CSysReadInitialVals:
+    DC.L    $00000000                ; Initial field values for the form
+    DC.L    $00000001
+z_CSysReadBounds:
+    DC.B    'SyRd'                   ; Bounds for command parameters
+    DC.L    $00000014
+
 
     PAGE
-* NeoWidEx Diag_Read strings ================================
+* NeoWidEx Sys_Read strings ================================
     SECTION kSecStrings
 
-sCmdDiagRead:
-    DC.B    $10,$09                  ; Diag_Read command (it's short!)
-s_CDiagReadStatusExp:
+s_CSysReadStatusExp:
     DC.B    $10,$01,$06              ; Command to read exception registers
-s_CDiagReadStatusStd:
+s_CSysReadStatusStd:
     DC.B    $10,$01,$00              ; Command to read standard status
 
-s_CDiagReadStatusErr0:
+s_CSysReadStatusErr0:
     DC.B    $0D,'FAILED TO RETRIEVE EXCEPTION REGISTERS.',0
-s_CDiagReadExceptionErr:
+s_CSysReadExceptionErr:
     DC.B    $0D,'READ EXCEPTION DETECTED. EXCEPTION REGISTER-',0
 
-s_CDiagReadForm:                     ; User form for asking about seeking
-    DC.B    $0D,'SEEK SOMEWHERE FIRST? a',0
+s_CSysReadForm:                      ; User form for command parameters
+    DC.B    $0D,'FROM BLOCK ac____ READ ba BLOCKS',0
 
     DS.W    0
-s_CDiagReadPrompts:                  ; Form prompts for asking about seeking
-    DC.L    .p1
-.p1 DC.B    'SEEK FIRST',0
-
-    DS.W    0
-s_CDiagReadInitialVals:              ; Initial values for the form
-    DC.L    $00000001                ; By default, we do want to seek somewhere
+s_CSysReadPrompts:                   ; Form prompts for command parameters
+    DC.L    .p1,.p2
+.p1 DC.B    'BLOCK',0
+.p2 DC.B    'COUNT',0
 
 
 ** (Back to the code section) **

@@ -75,14 +75,15 @@ CMD_Diag_Write:
     MOVE.W  zBlockSize,zWIOWriteLen  ; Write a whole block to the Widget
     MOVE.L  #zSectorTag,zWIOWritePtr   ; Write data from this memory location
     BSR     WIDGETIO                 ; Issue command
-    BEQ     .ex                      ; All OK? Go check write exception register
+    BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
+    TST.B   zWIOError                ; Did the write command go ok?
+    BEQ     .ex                      ; Yes, go check read exception register
     BSR     WIDGETPERROR             ; Error! Print error message
     MOVE.L  kStdStatus,-(A7)         ; Raw standard status to stack
     ; We go ahead and print the standard status because we are going to
     ; overwrite it in investigations to follow. This way the user can still
     ; inspect it for clues.
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  RAW STANDARD STATUS-'>,lx
-    CLR.B   zHaveInfo                ; Could spares change? Force info refresh
 
     ; Get exception registers from Widget
 .ex MOVE.B  #3,D0                    ; This command is three bytes long
@@ -101,7 +102,6 @@ CMD_Diag_Write:
     MOVE.B  (2+kStdStatus),-(A7)     ; Error! Write-exception reg. onto stack
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_CDiagWriteExceptionErr
     mPrint  kCrtRow,kCrtCol,#kFirstCol,hx,<$0D,'SEE FULL STATUS FOR DETAILS.'>
-    CLR.B   zHaveInfo                ; Could spares change? Force info refresh
 
     ; Restore standard status in kStdStatus.
 .ss MOVE.B  #3,D0                    ; This command is three bytes long
