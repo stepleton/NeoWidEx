@@ -21,9 +21,9 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $8000                    ; Various numerical data items live here
+    ORG     $8800                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $8800                    ; Structured scratch space
+    ORG     $8C00                    ; Structured scratch space
     SECTION kSecStrings
     ORG     $9000                    ; Program strings bring up the rear
     SECTION kSecCode
@@ -110,6 +110,8 @@ _NOTYET:
 
     INCLUDE NeoWidEx_CMD_Scan.X68
 
+    INCLUDE NeoWidEx_UTILITIES.X68
+
     PAGE
 * NeoWidEx numerical data ==================================
     SECTION kSecData
@@ -140,7 +142,7 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Send_Park
     DC.L    CMD_Initialize_SpareTable
     DC.L    _NOTYET
-    DC.L    _NOTYET
+    DC.L    (1+UTILITIES)
     DC.L    _THANKS
     DC.L    (1+GOBACK)
     DC.L    $00000000                ; Null terminator
@@ -176,8 +178,8 @@ sMainMenu:
     DC.B    'RESET SERVO   H',0
     DC.B    'PARK HEADS    I',0
     DC.B    'INIT SPR TBL  J',0
-    DC.B    'FORMAT        K',0
-    DC.B    'FORMAT TRACK  L',0
+    DC.B    'FORMAT TRACK  K',0
+    DC.B    'UTILITIES     L',0
     DC.B    'THANKS        M',0
     DC.B    'QUIT          N',0
     DC.B    0                        ; End of menu
@@ -185,6 +187,7 @@ sMainMenu:
     DC.B    $07                      ; Divider after item 7
     DC.B    $0E                      ; Divider after item E
     DC.B    $12                      ; Divider after item I
+    DC.B    $14                      ; Divider after item K
     DC.B    $15                      ; Divider after item L
     DC.B    0                        ; No more dividers
 

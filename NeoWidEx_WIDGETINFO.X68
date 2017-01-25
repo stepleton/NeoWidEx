@@ -165,11 +165,11 @@ WIDGETINFO:
     ; Args:
     ;   (none)
     ; Notes:
-    ;   Runs WIDGETINFO if it hasn't been run yet, and in that case, has all
-    ;       of WIDGETINFO's side effects. Otherwise, there are no side effects
-    ;       beyond printing stuff.
+    ;   Trashes registers: D0-D4/A0-A3.
+    ;   Always runs WIDGETINFO, providing a means for the operator to manually
+    ;       refresh cached information about the drive.
 WINFOPRINT:
-    BSR     WINFOMAYBE               ; Run WIDGETINFO if needed
+    BSR     WIDGETINFO               ; Refresh drive information
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DRIVE INFO ---',$0D>
 
     MOVE.L  zDriveNamePtr,-(A7)      ; Drive type string pointer onto stack

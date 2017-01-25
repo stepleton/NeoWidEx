@@ -24,8 +24,7 @@
     ;   Trashes D0-D4/A0-A4.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 CMD_Sys_Read:
-  ; BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
-  BSR WINFOMAYBE
+    BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- WIDGET READ ---'>
 
     ; Set form bounds based on drive information
@@ -104,6 +103,7 @@ CMD_Sys_Read:
     RTS
 .ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
     RTS                              ; Back to caller
+
 
     PAGE
 * NeoWidEx Sys_Read scratch data allocation ================
