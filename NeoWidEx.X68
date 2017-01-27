@@ -21,11 +21,11 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $8800                    ; Various numerical data items live here
+    ORG     $9000                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $8C00                    ; Structured scratch space
+    ORG     $9400                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $9000                    ; Program strings bring up the rear
+    ORG     $9800                    ; Program strings bring up the rear
     SECTION kSecCode
 
 
@@ -76,8 +76,6 @@ _NOTYET:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SORRY... NOT IMPLEMENTED YET'>
     RTS
 
-    INCLUDE NeoWidEx_WIDGETINFO.X68
-
     INCLUDE NeoWidEx_UI.X68
 
     INCLUDE NeoWidEx_UI_FORMS.X68
@@ -85,6 +83,12 @@ _NOTYET:
     INCLUDE NeoWidEx_IO.X68
 
     INCLUDE NeoWidEx_BUFFER.X68
+
+    INCLUDE NeoWidEx_WIDGETINFO.X68
+
+    INCLUDE NeoWidEx_CMD_ProFile_Read.X68
+
+    INCLUDE NeoWidEx_CMD_ProFile_Write.X68
 
     INCLUDE NeoWidEx_CMD_Diag_Read.X68
 
@@ -129,8 +133,8 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Read_Servo_Status
     DC.L    SPAREPRINT
     DC.L    CMD_Set_Recovery
-    DC.L    _NOTYET
-    DC.L    _NOTYET
+    DC.L    CMD_ProFile_Read
+    DC.L    CMD_ProFile_Write
     DC.L    CMD_Sys_Read
     DC.L    _NOTYET
     DC.L    CMD_Send_Seek

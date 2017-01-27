@@ -46,12 +46,12 @@ UTIL_Grep_Sectors:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'CYLINDER TOO HIGH -- HEAD PARKED?'>
     BEQ     .qt                      ; Otherwise, give up
 .ss SWAP    D1                       ; Restore original seek address ordering
-    MOVE.L  D1,z_UGrepSecStartPos    ; Save initial seek address in start pos
+    MOVE.L  D1,z_UGrepStartPos       ; Save initial seek address in start pos
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SEARCHING...',$0D>  ; Note newline
     mResetP                          ; Reset paging
 
-    ; MAIN LOOP at last. We start by loading the sector. Throughout the loop,
-    ; D1 will be reserved for the current CHS address. Other registers are free.
+    ; MAIN LOOP at last. Throughout the loop, D1 will contain the current CHS
+    ; address. Other registers are free. We start by loading the sector.
 .lp MOVE.B  D1,-(A7)                 ;   Current sector onto stack to print
     ROR.L   #8,D1                    ;   Rotate head into LSByte
     MOVE.B  D1,-(A7)                 ;   Current head onto stack to print
@@ -61,10 +61,15 @@ UTIL_Grep_Sectors:
     MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  CYL-'>,hx,<' HEAD-'>,hhx
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<' SECTOR-'>,hhx
-    BRA     _UGrepSec_DIAGREAD       ;   Attempt to read at this location
-    BEQ.S   .gr                      ;   Success? On to grepping
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' READ ERROR.'>  ; Failure!
+    BSR     _UGrepSec_SENDSEEK       ;   Attempt to seek to this location
+    BEQ.S   .rd                      ;   Success? On to reading
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' -- SEEK ERROR.'>  ; Failure!
     BRA     .er                      ;   Bail instead
+.rd BSR     _UGrepSec_DIAGREAD       ;   Attempt to read at this location
+    BEQ.S   .gr                      ;   Success? On to grepping
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' -- READ ERROR.'>  ; Failure!
+    BSR     WINFOSTATUSCHECK         ;   Force info refresh if spares changed
+    BRA     .er                      ;   Now bail
 
     ; Sector loaded, we scan for a match to our search string.
 .gr BSR     _UGrep_GREP              ;   Scan for a match
@@ -73,9 +78,9 @@ UTIL_Grep_Sectors:
 
     ; Compute the address of the next sector.
 .nx BSR     _UGrepSec_NEXTSECTOR     ;   Increment the sector in D1
-    CMP.L   z_UGrepSecStartPos,D1    ;   Are we back at the beginning?
+    CMP.L   z_UGrepStartPos,D1       ;   Are we back at the beginning?
     BEQ.S   .dn                      ;   Yes, jump out to the exit.
-    BRA     .lp                      ;   No, continue search in the new sector
+    BNE     .lp                      ;   No, continue search in the new sector
 
 .dn MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
     mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'DONE.                    '>
@@ -95,14 +100,65 @@ UTIL_Grep_Sectors:
     ;   Trashes D0-D4/A0-A4.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 UTIL_Grep_Blocks:
+    BSR     WINFOMAYBE               ; Run WIDGETINFO if it hasn't been run yet
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- GREP BLOCKS ---'>
     BSR     _UGrep_FORM              ; Get the search pattern from the user
     BEQ     .qt                      ; Did the user cancel? Quit now
 
+    ; Ask user for initial block to start the search
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'ALMOST READY -- WHERE TO BEGIN?'>
+    MOVE.L  zNumBlocks,D0            ; The upper bound for the block...
+    SUBQ.L  #1,D0                    ; ...is zNumBlocks-1
+    MOVE.L  D0,z_UGrepBloFormBounds  ; Save in bounds array
+    LEA     s_UGrepBloForm,A0        ; Prepare FORM args; address of template...
+    LEA     s_UGrepBloFormPrompts,A1   ; ...address of prompt pointer array...
+    LEA     z_UGrepBloFormInitVals,A2  ; ...address of initial values array...
+    LEA     z_UGrepBloFormBounds,A3  ; ...and address of bounds array
+    BSR     FORM                     ; Launch the form
+    ; Back from form, did user want to cancel?
+    TST.B   zFormIntent              ; Did the user cancel?
+    BEQ     .rt                      ; Yes, jump ahead to quit
+
+    ; Setup before we begin our search
+    MOVE.L  zFieldValues,D1          ; Starting block into D1
+    MOVE.L  D1,z_UGrepStartPos       ; Save initial seek address in start pos
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SEARCHING...',$0D>  ; Note newline
+    mResetP                          ; Reset paging
+
+    ; MAIN LOOP at last. Throughout the loop, D1 will contain the current block.
+    ; Other registers are free. We start by loading the block.
+.lp MOVE.L  D1,-(A7)                 ;   Current block onto stack to print
+    MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'  BLOCK-'>,3x
+    BSR     _UGrepBlo_PROREAD        ;   Attempt to read this block
+    BEQ.S   .gr                      ;   Success? On to grepping
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' -- READ ERROR.'>  ; Failure!
+    BSR     WINFOSTATUSCHECK         ;   Force info refresh if spares changed
+    BRA     .er                      ;   Now bail
+
+    ; Block loaded, we scan for a match to our search string.
+.gr BSR     _UGrep_GREP              ;   Scan for a match
+    BNE.S   .nx                      ;   No match? Advance to next sector
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<' -- PATTERN FOUND'>,qpendl
+
+    ; Compute the address of the next block.
+.nx ADDQ.L  #1,D1                    ;   Simple as counting upward
+    CMP.L   zNumBlocks,D1            ;   But have we hit disk capacity?
+    BLO.S   .bb                      ;   No, proceed
+    CLR.L   D1                       ;   Yes, loop around to the first block
+.bb CMP.L   z_UGrepStartPos,D1       ;   Are we back at the start of the search?
+    BNE     .lp                      ;   No, continue search in the new block
+
+.dn MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'DONE.         '>
 .rt RTS
 
 .qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
     RTS                              ; Back to caller
+
+.er BSR     WIDGETPERROR             ; Error! Print error message
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SEE FULL STATUS FOR DETAILS.'>
+    RTS
 
     ; _UGrep_GREP -- UTIL_Grep_* helper: look for search pattern in data buffer
     ; Args:
@@ -292,6 +348,8 @@ _UGrepSec_DIAGREAD:
     MOVE.B  #2,D0                    ; This command is two bytes long
     BSR     WIDGETCMD                ; Construct actual command in RAM
     BSR     WIDGETIO                 ; Issue command
+    BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
+    TST.B   zWIOError                ; Did the read command go ok?
     RTS                              ; Back to caller
 
     ; _UGrepSec_SENDSEEK -- UTIL_Grep_Sectors helper: issue Send_Seek command
@@ -341,6 +399,24 @@ _UGrepSec_NEXTSECTOR:
 .rh LSL.L   #8,D1                    ; Shift cylinders and heads back into place
 .rt RTS                              ; Back to caller
 
+    ; _UGrepBlo_PROREAD -- UTIL_Grep_Blocks helper: issue ProFile_Read command
+    ; Args:
+    ;   D1: Longword containing logical block address to read
+    ; Notes:
+    ;   Success/failure indications are identical to WIDGETIO.
+_UGrepBlo_PROREAD:
+    MOVE.L  D1,z_UGrepProReadCmd     ; Copy desired block to command
+    CLR.B   z_UGrepProReadCmd        ; Reset actual command byte to 0
+    MOVE.B  #4,zWIOCmdLen            ; This command is four bytes long
+    mMemCpy #z_UGrepProReadCmd,#zWIOCmd,#4   ; We copy it to the command buffer
+    MOVE.W  zBlockSize,zWIOReadLen   ; Read a whole block from the Widget
+    MOVE.L  #zSectorTag,zWIOReadPtr  ; Read into this memory location
+    CLR.W   zWIOWriteLen             ; ProFile_Read command writes no data
+    BSR     WIDGETIO                 ; Issue command
+    BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
+    TST.B   zWIOError                ; Did the read command go ok?
+    RTS                              ; Back to caller
+
 
     PAGE
 * NeoWidEx Grep numerical data =============================
@@ -365,8 +441,16 @@ z_UGrepPattern:
     DC.L    $55667788                ; ...pattern to start with, at least for...
     DC.L    $99AABBCC                ; ...the first bit
 
-z_UGrepSecStartPos:                  ; CHS where our search has started
+z_UGrepStartPos:                     ; CHS or block where our search has started
     DC.B    'UGSS'
+
+    DS.W    0
+z_UGrepBloFormInitVals:              ; Initial field vals for first search block
+    DC.L    $00000000
+
+    DS.W    0
+z_UGrepBloFormBounds:                ; Bounds for the first search block
+    DC.L    $00000000
 
     DS.W    0                        ; Initial field values for the length form
 z_UGrepFormLenInitVals:
@@ -385,8 +469,10 @@ z_UGrepFormPatInitVals:
     DC.B    'Vals'                   ; ...is shown the form
 
     DS.W    0                        ; Force even alignment for following data
-z_UGrepSecSendSeekCmd:
-    DC.B    $10,$04,$00,$00,$00,$00  ; Command; last four bytes are alterable
+z_UGrepSecSendSeekCmd:               ; Send_Seek cmd; last four bytes can change
+    DC.B    $10,$04,$00,$00,$00,$00
+z_UGrepProReadCmd:                   ; ProFile_Read cmd; last 3 bytes can change
+    DC.B    $00,$00,$00,$00          ; (Also requires even alignment)
 
 
     PAGE
@@ -400,7 +486,15 @@ s_UGrepSecStatusStd:
 s_UGrepSecDiagRead:
     DC.B    $10,$09                  ; Diag_Read command (it's short!)
 
-s_UGrepFormLen:                   ; User form for pattern length
+s_UGrepBloForm:                      ; User form for first block of search
+    DC.B    $0D,'START SEARCH AT BLOCK ac____',0
+
+    DS.W    0                        ; Form prompts for first block of search
+s_UGrepBloFormPrompts:
+    DC.L    .p1
+.p1 DC.B    'BLOCK',0
+
+s_UGrepFormLen:                      ; User form for pattern length
     DC.B    $0D,'PATTERN LENGTH IN BYTES-aa',0
 
     DS.W    0                        ; Form prompts for pattern length
