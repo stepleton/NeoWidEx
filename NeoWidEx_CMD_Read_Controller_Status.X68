@@ -138,7 +138,7 @@ CMD_Read_Ctrlr_Status:
     ;   Leaves Widget standard status in kStdStatus.
 _READALLCTRLRSTATUS:
     MOVEM.L A0-A1,-(A7)              ; Save address registers used to stack
-    MOVEM.W D0,-(A7)                 ; Save data register used to stack
+    MOVE.W  D0,-(A7)                 ; Save data register used to stack
     MOVE.B  #$07,D0                  ; We will load statuses in reverse order
     MOVEA.L #(zStatus0+8*4),A0       ; A0 points above curr status storage entry
     MOVEA.L #(dStatusDescTable+7*4),A1   ; A1 points to current desc table entry
@@ -152,7 +152,7 @@ _READALLCTRLRSTATUS:
     SUBQ.L  #4,A1                    ; Nove A1 to next desc table entry
     SUBQ.B  #1,D0                    ; Next status command into D0
     BPL     .lp                      ; Repeat loop while status subcommand >= 0
-    MOVEM.W (A7)+,D0                 ; Restore data register used from stack
+    MOVE.W  (A7)+,D0                 ; Restore data register used from stack
     MOVEM.L (A7)+,A0-A1              ; Restore address registers used from stack
     RTS                              ; Back to caller
 

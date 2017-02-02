@@ -246,8 +246,8 @@ _PRINTSERVOCOMMAND:
     ; Notes:
     ;   Note how servo status counts up from 01.
 _READALLSERVOSTATUS:
-    MOVEM.L A1,-(A7)                 ; Save address registers used to stack
-    MOVEM.W D0,-(A7)                 ; Save data register used to stack
+    MOVE.L  A1,-(A7)                 ; Save address registers used to stack
+    MOVE.W  D0,-(A7)                 ; Save data register used to stack
     MOVE.B  #$08,D0                  ; We will load statuses in reverse order
     MOVEA.L #(zServoStatus1+7*4),A1  ; A1 points to curr status storage entry
 .lp MOVE.B  D0,(zServoStatusCmd+2)   ; Specify Read_Servo_Status subcommand
@@ -261,8 +261,8 @@ _READALLSERVOSTATUS:
     SUBQ.B  #1,D0                    ; Next status subcommand into D0
     CMPI.B  #0,D0                    ; Have we reached the end (subcomand 0?)
     BGT     .lp                      ; Repeat loop while status subcommand > 0
-    MOVEM.W (A7)+,D0                 ; Restore data register used from stack
-    MOVEM.L (A7)+,A1                 ; Restore address registers used from stack
+    MOVE.W  (A7)+,D0                 ; Restore data register used from stack
+    MOVEA.L (A7)+,A1                 ; Restore address registers used from stack
     RTS                              ; Back to caller
 
     ; Tiny subroutine that _READALLSERVOSTATUS uses to send the command at

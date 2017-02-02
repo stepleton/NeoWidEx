@@ -55,7 +55,7 @@ UTIL_Grep_Sectors:
 .lp MOVE.B  D1,-(A7)                 ;   Current sector onto stack to print
     ROR.L   #8,D1                    ;   Rotate head into LSByte
     MOVE.B  D1,-(A7)                 ;   Current head onto stack to print
-    ROR.L   #8,D1                    ;   Rotate sector into LSWord
+    ROR.L   #8,D1                    ;   Rotate cylinder into LSWord
     MOVE.W  D1,-(A7)                 ;   Current cylinder onto stack to print
     SWAP    D1                       ;   Restore original seek address ordering
     MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
@@ -68,7 +68,6 @@ UTIL_Grep_Sectors:
 .rd BSR     _UGrepSec_DIAGREAD       ;   Attempt to read at this location
     BEQ.S   .gr                      ;   Success? On to grepping
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<' -- READ ERROR.'>  ; Failure!
-    BSR     WINFOSTATUSCHECK         ;   Force info refresh if spares changed
     BRA     .er                      ;   Now bail
 
     ; Sector loaded, we scan for a match to our search string.
@@ -80,10 +79,12 @@ UTIL_Grep_Sectors:
 .nx BSR     _UGrepSec_NEXTSECTOR     ;   Increment the sector in D1
     CMP.L   z_UGrepStartPos,D1       ;   Are we back at the beginning?
     BEQ.S   .dn                      ;   Yes, jump out to the exit.
-    BNE     .lp                      ;   No, continue search in the new sector
+    BSR     QUITPOLL                 ;   No, but did the user press the 'q' key?
+    BEQ.S   .qt                      ;   If so, jump ahead to exit
+    BRA     .lp                      ;   Otherwise, search on in the new sector
 
 .dn MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'DONE.                    '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DONE.                    '>
 .rt RTS                              ; Back to caller
 
 .qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
@@ -122,6 +123,7 @@ UTIL_Grep_Blocks:
     ; Setup before we begin our search
     MOVE.L  zFieldValues,D1          ; Starting block into D1
     MOVE.L  D1,z_UGrepStartPos       ; Save initial seek address in start pos
+    MOVE.L  D1,z_UGrepBloFormInitVals  ; And also to initial field values
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'SEARCHING...',$0D>  ; Note newline
     mResetP                          ; Reset paging
 
@@ -144,13 +146,16 @@ UTIL_Grep_Blocks:
     ; Compute the address of the next block.
 .nx ADDQ.L  #1,D1                    ;   Simple as counting upward
     CMP.L   zNumBlocks,D1            ;   But have we hit disk capacity?
-    BLO.S   .bb                      ;   No, proceed
+    BLO.S   .iv                      ;   No, proceed
     CLR.L   D1                       ;   Yes, loop around to the first block
-.bb CMP.L   z_UGrepStartPos,D1       ;   Are we back at the start of the search?
+.iv MOVE.L  D1,z_UGrepBloFormInitVals  ; Copy new block to initial field values
+    BSR     QUITPOLL                 ;   Did the user press the 'q' key?
+    BEQ.S   .qt                      ;   If so, jump ahead to exit
+    CMP.L   z_UGrepStartPos,D1       ;   Are we back at the start of the search?
     BNE     .lp                      ;   No, continue search in the new block
 
 .dn MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,endl,<'DONE.         '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DONE.         '>
 .rt RTS
 
 .qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
@@ -376,6 +381,7 @@ _UGrepSec_SENDSEEK:
     ;       MSWord, head is the second least significant byte, sector is
     ;       the LSByte (CCHS).
     ; Notes:
+    ;   "Trashes" D1.
     ;   On completion, D1 contains the "next" seek address, Seek addresses
     ;       iterate through sectors, heads, and cylinders.
     ;   The next sector after the drive's largest addressable sector is

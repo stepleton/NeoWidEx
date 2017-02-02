@@ -183,7 +183,7 @@ sMainMenu:
     DC.B    'PARK HEADS    I',0
     DC.B    'INIT SPR TBL  J',0
     DC.B    'FORMAT TRACK  K',0
-    DC.B    'UTILITIES     L',0
+    DC.B    'UTILITIES...  L',0
     DC.B    'THANKS        M',0
     DC.B    'QUIT          N',0
     DC.B    0                        ; End of menu

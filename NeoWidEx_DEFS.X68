@@ -84,11 +84,16 @@ kKeyCodeY   EQU  $E7                 ; Key code for the Y key
 kKeyCodeZ   EQU  $F9                 ; Key code for the Z key
 kKeyCodeSla EQU  $CC                 ; Key code for the / key
 
+kResetCode  EQU  $80                 ; COPS reset code
+
 kWIONoDisk  EQU  $01                 ; WIDGETIO error: no disk present
 kWIOBusy    EQU  $02                 ; WIDGETIO error: disk won't deassert BSY
 kWIOHello   EQU  $03                 ; WIDGETIO error: initial handshake failed
 kWIOCmdAck  EQU  $05                 ; WIDGETIO error: disk didn't ack command
 kWIODataAck EQU  $06                 ; WIDGETIO error: disk didn't ack data
+
+kVia1Ifr    EQU  $1A                 ; VIA 1 interrupt flags, rel. to kVia1Base
+kVia1OutA   EQU  $02                 ; VIA 1 output port A, rel. to kVia1Base
 
 kVia2InA    EQU  $08                 ; VIA 2 input port A, relative to kVia2Base
 kVia2InB    EQU  $00                 ; VIA 2 input port B, relative to kVia2Base

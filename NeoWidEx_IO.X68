@@ -57,7 +57,8 @@ SECTOR:
 WIDGETCMD:
     ; 0. Preliminaries
     MOVEM.L A0-A1,-(A7)              ; Save address registers used
-    MOVEM.W D0-D1,-(A7)              ; Save data registers used
+    MOVE.W  D0,-(A7)                 ; Save data registers used
+    MOVE.W  D1,-(A7)
     ANDI.W  #$000F,D0                ; Length nibble, and also the counter
     MOVE.B  D0,zWIOCmdLen            ; Copy length to Widget command length
     ADDQ.B  #1,zWIOCmdLen            ; Add 1 to account for the checksum byte
@@ -83,7 +84,8 @@ WIDGETCMD:
     DBRA    D0,.lp                   ; Loop to the next byte
 .rt EORI.B  #$FF,D1                  ; Compute one's complement of checksum
     MOVE.B  D1,(A1)                  ; Add checksum to the end of the command
-    MOVEM.W (A7)+,D0-D1              ; Restore data registers used
+    MOVE.W  (A7)+,D1                 ; Restore data registers used
+    MOVE.W  (A7)+,D0
     MOVEM.L (A7)+,A0-A1              ; Restore address registers used
     RTS                              ; Back to caller
 
@@ -103,7 +105,8 @@ WIDGETCMD:
 WIDGETIO:
     ; 0. Preliminaries
     MOVEM.L D0/A0-A3,-(A7)           ; Save registers used
-    MOVEM.W D1-D2,-(A7)              ; Save more registers used, but not as much
+    MOVE.W  D1,-(A7)
+    MOVE.W  D2,-(A7)
     MOVEA.L zWIOReadPtr,A1           ; Local copy of read pointer
     MOVEA.L zWIOWritePtr,A2          ; Local copy of write pointer
     MOVE.B  zWIORdWrCycles,D1        ; Read number of desired read*write* cycles
@@ -188,7 +191,8 @@ WIDGETIO:
     BNE.S   .s5                      ;   Back to top if iterations remain
 
 .rt m_iOn                            ; Enable interrupts
-    MOVEM.W (A7)+,D1-D2              ; Restore registers
+    MOVE.W  (A7)+,D2                 ; Restore registers
+    MOVE.W  (A7)+,D1
     MOVEM.L (A7)+,D0/A0-A3           ; Restore more registers
     TST.B   zWIOError                ; Any errors? Set flags
     RTS                              ; Back to caller

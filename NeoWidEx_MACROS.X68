@@ -74,7 +74,7 @@ mPrtMem     MACRO
       MOVE.W  \3,D4                  ; Next line first column (chars/bytes)
               ENDC
               IFNC '\5','A3'
-      MOVEM.L A3,-(A7)               ; Save A3 contents
+      MOVE.L  A3,-(A7)               ; Save A3 contents
       MOVEA.L \5,A3                  ; Memory address of string to print
               ENDC
       JSR     kDispMsg               ; Print the message
@@ -83,7 +83,7 @@ mPrtMem     MACRO
       MOVE.W  D6,\2                  ; Export new first line column if desired
               ENDC
               IFNC '\5','A3'
-      MOVEM.L (A7)+,A3               ; Restore A3 contents
+      MOVEA.L (A7)+,A3               ; Restore A3 contents
               ENDC
       MOVEM.L (A7)+,D4-D6/A6         ; Restore register contents
             ENDM
@@ -119,7 +119,7 @@ mPrtBts     MACRO
       MOVE.W  \3,D4                  ; Next line first column (chars/bytes)
               ENDC
               IFNC '\5','A3'
-      MOVEM.L A3,-(A7)               ; Save A3 contents
+      MOVE.L  A3,-(A7)               ; Save A3 contents
       MOVEA.L \5,A3                  ; Memory address of string to print
               ENDC
               IFNC '\6','D3'
@@ -131,7 +131,7 @@ mPrtBts     MACRO
       MOVE.W  D6,\2                  ; Export new first line column if desired
               ENDC
               IFNC '\5','A3'
-      MOVEM.L (A7)+,A3               ; Restore A3 contents
+      MOVEA.L (A7)+,A3               ; Restore A3 contents
               ENDC
       MOVEM.L (A7)+,D3-D6/A6         ; Restore register contents
             ENDM
@@ -239,10 +239,10 @@ mPrtHxL     MACRO
     ;   All notes of mPrtMem apply here as well.
     ;   Pops the address off of the stack.
 mPrtStr     MACRO
-      MOVEM.L A3,-(A7)               ; Save register contents
+      MOVE.L  A3,-(A7)               ; Save register contents
       MOVEA.L 4(A7),A3               ; Copy address from stack to A3
       mPrtMem \1,\2,\3,\4,A3         ; Print the string at the address
-      MOVEM.L (A7)+,A3               ; Restore register contents
+      MOVEA.L (A7)+,A3               ; Restore register contents
       ADDQ.L  #4,A7                  ; Drop address from stack
             ENDM
 
@@ -485,7 +485,7 @@ mMenuUi     MACRO
     ;   Will not work if the destination address is A0.
 mMemCpy     MACRO
       MOVEM.L A0-A1,-(A7)            ; Save address registers
-      MOVEM.W D0,-(A7)               ; Save data register
+      MOVE.W  D0,-(A7)               ; Save data register
             IFNC '\1','A0'
       MOVEA.L \1,A0                  ; Copy source address to A0
             ENDC
@@ -498,7 +498,7 @@ mMemCpy     MACRO
       SUBQ.L  #1,D0                  ; Decrement byte count by 1
 .c\@  MOVE.B  (A0)+,(A1)+            ; Copy next byte from source to dest
       DBRA    D0,.c\@                ; Loop until done
-      MOVEM.W (A7)+,D0               ; Restore data register
+      MOVE.W  (A7)+,D0               ; Restore data register
       MOVEM.L (A7)+,A0-A1            ; Restore address registers
             ENDM
 
@@ -510,8 +510,9 @@ mMemCpy     MACRO
     ; Notes:
     ;   Behaviour undefined if destination memory region overlaps source byte.
 mMemSet     MACRO
-      MOVEM.L A0,-(A7)               ; Save address register
-      MOVEM.W D0-D1,-(A7)            ; Save data registers
+      MOVE.L  A0,-(A7)               ; Save address register
+      MOVE.W  D0,-(A7)               ; Save data registers
+      MOVE.W  D1,-(A7)
             IFNC '\1','D0'
       MOVE.B  \1,D0                  ; Copy source byte to D0
             ENDC
@@ -524,8 +525,9 @@ mMemSet     MACRO
       SUBQ.L  #1,D1                  ; Decrement byte count by 1
 .c\@  MOVE.B  D0,(A0)+               ; Copy next byte from source to dest
       DBRA    D1,.c\@                ; Loop until done
-      MOVEM.W (A7)+,D0-D1            ; Restore data register
-      MOVEM.L (A7)+,A0               ; Restore address register
+      MOVE.W  (A7)+,D1               ; Restore data registers
+      MOVE.W  (A7)+,D0
+      MOVEA.L (A7)+,A0               ; Restore address register
             ENDM
 
     ; mDump -- Print contiguous bytes, words, or longs, separated by spaces
@@ -630,7 +632,7 @@ m_hb2s      MACRO
     ; Notes:
     ;   Most-significant byte of the register will be cleared.
 m_cp3b      MACRO
-      MOVEM.L A0,-(A7)               ; Save A0 on the stack
+      MOVE.L  A0,-(A7)               ; Save A0 on the stack
       CLR.L   \2                     ; Clear \0
             IFNC '\1','A0'
       MOVEA.L \1,A0                  ; Memory location of the three bytes
@@ -640,7 +642,7 @@ m_cp3b      MACRO
       MOVE.B  (A0)+,\2               ; Copy second device number byte
       LSL.L   #8,\2                  ; Shift word for next device number byte
       MOVE.B  (A0)+,\2               ; Copy third device number byte
-      MOVEM.L (A7)+,A0               ; Restore A0
+      MOVEA.L (A7)+,A0               ; Restore A0
             ENDM
 
     ; m_iOff -- Disable interrupts

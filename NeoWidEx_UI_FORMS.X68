@@ -215,8 +215,7 @@ FORM:
     BEQ.S  .u2                       ;     Yes, skip ahead to handle it
 
     ; 3c. Field is not bool; see if user has typed a hex digit
-    MOVE.L  A0,-(A7)                 ;     Save A0 to stack
-    MOVE.W  D0,-(A7)                 ;     Save D0 to stack
+    MOVEM.L D0/A0,-(A7)              ;     Save D0 and A0 to stack
     LEA     d_FKeyToNibble,A0        ;     Key-to-nibble table to A0
 .hl MOVE.B  (A0)+,D0                 ;       Copy key-to-compare to D0
     BEQ.S   .hx                      ;       Quit if it was the null terminator
@@ -226,8 +225,7 @@ FORM:
     BRA.S   .hl                      ;       Loop again to deal with that entry
 .hc MOVE.B  (A0)+,D4                 ;     Copy corresponding hex digit to D4
     ANDI.B  #$FB,CCR                 ;     Clear zero bit to mark valid input
-.hx MOVEM.W (A7)+,D0                 ;     Recover D0 from stack
-    MOVEM.L (A7)+,A0                 ;     Recover A0 from stack
+.hx MOVEM.L (A7)+,D0/A0              ;     Restore D0/A0 without changing flags
     BRA.S   .u3                      ;     Deal with user input
 
     ; 3d. Field is bool; see if user has typed Y or N
@@ -254,11 +252,11 @@ FORM:
     ; 5. Before we move on from this field, see if the new value is in bounds;
     ;    if not, admonish the user and restore the prior field value
 .u5 LEA     z_FFieldBounds,A4        ;   Field bounds array base into A4
-    MOVE.W  D0,-(A7)                 ;   Save D0 onto stack
+    MOVE.L  D0,-(A7)                 ;   Save D0 onto stack
     LSL.W   #2,D0                    ;   D0 *= 4 for field indirect addressing
     MOVE.L  0(A0,D0.W),D4            ;   Copy new value to D4
     CMP.L   0(A4,D0.W),D4            ;   Compare with inclusive upper bound
-    MOVEM.W (A7)+,D0                 ;   Restore D0 without changing flags
+    MOVEM.L (A7)+,D0                 ;   Restore D0 without changing flags
     BLS.S   .u6                      ;   New value is in range, so move ahead
     CLR.B   zFormIntent              ;   It's not; cancel submit just in case
     JSR     kMakeDbox                ;   Clear dialog box for err message
@@ -290,8 +288,19 @@ FORM:
     CLR.W   D0                       ;   Yes, so rewind to field 0
     BRA     .ui                      ;   And back to top of UI loop
 
-    ; Finally, cleanup
-.rt JSR     kClearDbox               ; Delete dialogue box
+    ; Finally, erase the dialog box and return
+.rt MOVEA.W #(22+kDeskLine),A2       ; The top-left corner to blank out
+    MOVE.L  #$AAAA5555,D2            ; Pattern to paint; words will alternate
+    MOVE.W  #24,D4                   ; Paint an area this many pixels tall
+
+.gr SWAP    D2                       ; Alternate the pattern for this line
+    MOVE.L  #68,D0                   ; Blank an area 68 bytes wide
+    MOVEQ.L #1,D1                    ; Paint only one line at a time
+    MOVEA.L A2,A1                    ; Line starts at thsi screen offset
+    JSR     kPaintBox                ; Paint the line
+    ADDA.W  #kRowBytes,A2            ; Start of next line
+    DBRA    D4,.gr                   ; Back to top of loop
+
     RTS                              ; Return to caller
 
     ; Special key handlers:
@@ -350,7 +359,8 @@ _GETKEY:
     ; Notes:
     ;   Will loop forever if a form has no fields.
 _REFRESHFORM:
-    MOVEM.W D0-D2,-(A7)              ; Save used data registers to stack
+    MOVE.W  D0,-(A7)                 ; Save used data registers to stack
+    MOVEM.L D1-D2,-(A7)
     CLR.W   D0                       ; DO: field index
 
 .t0 CMPI.B  #$FF,0(A3,D0.W)          ;   Does this field exist in the form?
@@ -361,7 +371,8 @@ _REFRESHFORM:
     CMPI.B  #4,D0                    ;   Or have we finished them all?
     BLO.S   .t0                      ;   If not, on to the next field
 
-    MOVEM.W (A7)+,D0-D2              ; Recover used data registers from stack
+    MOVEM.L (A7)+,D1-D2              ; Restore used data registers from stack
+    MOVE.W  (A7)+,D0
     RTS                              ; Back to caller
 
 
@@ -373,7 +384,7 @@ _REFRESHFORM:
     ; Notes:
     ;   D1 is set to the field screen row for field (D0.W) in pixels; D2 is set
     ;       to the field screen column for field (D0.W) in character positions.
-    ;   Trashes upper word of D1.
+    ;   Trashes upper word of D1 and D2.
 _FIELDPOS:
     MOVE.B  0(A1,D0.W),D1            ; Field's relative row into D1
     MOVE.B  0(A2,D0.W),D2            ; Field's column into D2
@@ -393,7 +404,7 @@ _FIELDPOS:
     ;   A0: Address of the field values array
     ;   A3: Address of the field sizes array
     ; Notes:
-    ;   Does not alter contents of D1-D2.
+    ;   Does not alter contents of D0-D2.
 _FILLFIELD:
     TST.B   0(A3,D0.W)               ; Is this field a boolean field?
     BNE.S   .f0                      ; No, skip ahead
@@ -516,7 +527,8 @@ _CURSOR:
     ; Notes:
     ;   (none)
 _SETNIBBLE:
-    MOVEM.W D0/D3,-(A7)              ; Save words of D0/D3 to stack
+    MOVE.W  D0,-(A7)                 ; Save LSWord of D0 to stack
+    MOVE.W  D3,-(A7)                 ; Save LSWord of D3 to stack
     MOVE.L  D1,-(A7)                 ; Save all of D1 to stack
     LSL.W   #2,D0                    ; Field index to long offset
     MOVE.L  0(A0,D0.W),D1            ; Copy field value to D1
@@ -528,7 +540,8 @@ _SETNIBBLE:
     ROL.L   D3,D1                    ; Rotate nibble to change back in place
     MOVE.L  D1,0(A0,D0.W)            ; Copy D1 back to field value
     MOVE.L  (A7)+,D1                 ; Recover all of D1 from stack
-    MOVEM.W (A7)+,D0/D3              ; Recover words of D0/D3 from stack
+    MOVE.W  (A7)+,D3                 ; Recover LSWord of D3 from stack
+    MOVE.W  (A7)+,D0                 ; Recover LSWord of D0 from stack
     RTS                              ; Back to caller
 
 

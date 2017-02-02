@@ -154,7 +154,9 @@ _EDITMEM:
     MOVE.B  #4,D2                    ; No, limit longs to edit to four
 
     ; Edit this next batch of longwords
-.ed MOVEM.W D0-D2,-(A7)              ; Save sizing info in registers to stack
+.ed MOVE.W  D0,-(A7)                 ; Save sizing info in registers to stack
+    MOVE.W  D1,-(A7)
+    MOVE.W  D2,-(A7)
     LSL.B   #2,D2                    ; Convert D2 from longwords to bytes
     ; This clumsy interlude to print which bytes we're editing
     ADD.W   D2,D1                    ; The number of the last byte we'll edit...
@@ -181,7 +183,9 @@ _EDITMEM:
     SUBA.L  A3,A3                    ; ...A2 already set, and no bounds in A3
     BSR     FORM                     ; Launch the form
     ; Back from form, restore registers, did user want to cancel?
-    MOVEM.W (A7)+,D0-D2              ; Restore sizing info on stack to registers
+    MOVE.W  (A7)+,D2                 ; Restore sizing info on stack to registers
+    MOVE.W  (A7)+,D1
+    MOVE.W  (A7)+,D0
     MOVE.L  (A7)+,A1                 ; Restore memory region address from stack
     TST.B   zFormIntent              ; Did the user cancel?
     BEQ     .rt                      ; Yes, jump ahead to quit

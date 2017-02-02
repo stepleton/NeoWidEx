@@ -130,7 +130,7 @@ MENU:
     MOVE.L  #$AAAA5555,D2            ; Pattern to paint; words will alternate
 
 .gr SWAP    D2                       ; Alternate the pattern for this line
-    MOVE.L  #22,D0                   ; Blank an area 18 bytes wide
+    MOVE.L  #22,D0                   ; Blank an area 22 bytes wide
     MOVEQ.L #1,D1                    ; Paint only one line at a time
     MOVEA.L A2,A1                    ; Line starts at this screen offset
     JSR     kPaintBox                ; Paint the line
@@ -315,10 +315,10 @@ BSUBDISPMSG:
     ;       two lines can only ever scroll the screen one line. So, we print
     ;       $0D instead.
 NEWLINE:
-    MOVEM.L A3,-(A7)                 ; Save A3 register
+    MOVE.L  A3,-(A7)                 ; Save A3 register
     MOVEA.L #.s0,A3                  ; Point A3 at "\r" string...
     JSR     kDispMsg                 ; ...and print it
-    MOVEM.L (A7)+,A3                 ; Restore A3 register
+    MOVEA.L (A7)+,A3                 ; Restore A3 register
     RTS                              ; Back to caller
 .s0 DC.B    $0D,0
 
@@ -387,6 +387,61 @@ PAGEDRTS:
     ADDQ.L  #4,A7                    ; Yes, drop caller's return address
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'...STOPPED...'>
 .rt RTS                              ; Back to caller or caller's caller...
+
+    ; QUITPOLL -- Nonblocking poll to see if user has typed 'q'
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   On return, the Z bit will be set iff the user has just typed 'q'.
+QUITPOLL:
+    ; Poll the COPS for a while, looking for a 'q'.
+    MOVE.L  A0,-(A7)                 ; Save A0 on the stack
+    MOVEM.L D0-D1,-(A7)              ; Save D0 and D1 on the stack
+    MOVE.L  #kVia1Base,A0            ; Replace A0 with VIA 1 base address
+    MOVE.W  #$100,D1                 ; Poll the COPS this many times
+.ql MOVE.B  kVia1Ifr(A0),D0          ; Copy VIA 1 interrupt flags to D0
+    BTST.L  #1,D0                    ; Is there input waiting?
+    BNE.S   .p1                      ; Yes! Jump ahead to see what it was
+.qb DBRA    D1,.ql                   ; Round to top for another loop
+    ; If we fall through to here, no 'q' has been received.
+    ANDI.B  #$FB,CCR                 ; Clear zero bit to mark "no 'q'"
+.qt MOVEM.L (A7)+,D0-D1              ; Retore D0-D1 from stack; flags unchanged
+    MOVEA.L (A7)+,A0                 ; Restore A0 from stack, flags unchanged
+    RTS                              ; Back to caller
+
+    ; Some input was waiting; what is it?
+.p1 MOVE.B  kVia1OutA(A0),D0         ; Copy VIA 1 port A output register to D0
+    BNE.S   .p2                      ; Was it mouse data? If not, skip ahead
+    BSR.S   .rc                      ; It was mouse data. Skip delta-X
+    BSR.S   .rc                      ; Skip delta-Y
+    BRA.S   .qb                      ; Back to QUITPOLL main loop
+
+.p2 CMPI.B  #kKeyCodeQ,D0            ; Was this the 'Q' key?
+    BNE.S   .p3                      ; No, skip to see if this was a reset code
+    BRA.S   .qt                      ; Yes! Return to caller with Z set
+
+.p3 CMPI.B  #kResetCode,D0           ; Was this a reset code?
+    BNE.S   .qb                      ; No, back to QUITPOLL main loop
+    BSR.S   .rc                      ; Yes, what kind of reset code was it?
+
+    CMPI.B  #$E0,D0                  ; Was it less than $E0?
+    BLO.S   .qb                      ; Yes, back to QUITPOLL main loop
+    CMPI.B  #$EF,D0                  ; Was it greater than $EF?
+    BHI.S   .qb                      ; Yes, back to QUITPOLL main loop
+
+    BSR.S   .rc                      ; It's clock data. Skip five bytes of it...
+    BSR.S   .rc
+    BSR.S   .rc
+    BSR.S   .rc
+    BSR.S   .rc
+    BRA.S   .qb                      ; ...and back to QUITPOLL main loop
+
+    ; Tiny helper that QUITPOLL uses for blocking reads from the COPS.
+.rc MOVE.B  kVia1Ifr(A0),D0          ; Copy VIA 1 interrupt flags to D0
+    BTST.L  #1,D0                    ; Is anything waiting for us?
+    BEQ.S   .rc                      ; No, keep looping until there is
+    MOVE.B  kVia1OutA(A0),D0         ; Copy VIA 1 port A output register to D0
+    RTS                              ; Back to caller
 
     ; HEXB2STR -- Convert D0 byte to a null-terminated hex string at zNumToStr
     ; Args:
