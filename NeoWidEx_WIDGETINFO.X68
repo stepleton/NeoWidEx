@@ -274,16 +274,30 @@ SPAREPRINT:
     mResetP                          ; Reset paging (only needed for Widget)
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SPARE TABLE ---'>,pendl
     TST.B   zIsWidgety               ; Is this a Widget or a ProFile?
-    BEQ.S   _SPAREPRINTPR            ; It's a ProFile; jump to specialised code
-    BRA     _SPAREPRINTWI            ; It's a Widget; jump to specialised code
-
-    ; SPAREPRINT branch for printing ProFile spare tables
-_SPAREPRINTPR:
-    ; Load the ProFile's spare table.
-    MOVE.L  #$00FFFFFF,D1            ; Sector ID for the ProFile spare table
+    BEQ.S   .pr                      ; It's a ProFile; jump to specialised code
+    ; Load the Widget's spare table.
+    MOVE.L  #$00FFFFFE,D1            ; Sector ID for the Widget spare table
     BSR     SECTOR                   ; Read the spare table
     BCS     .rt                      ; Jump to return on error
+    BSR     SPAREPRINTWI             ; Print spare table
+.rt RTS                              ; Back to caller
+    ; Load the ProFile's spare table.
+.pr MOVE.L  #$00FFFFFF,D1            ; Sector ID for the ProFile spare table
+    BSR     SECTOR                   ; Read the spare table
+    BCS     .ru                      ; Jump to return on error
+    BSR     SPAREPRINTPR             ; Print spare table
+.ru RTS                              ; Back to caller
 
+    ; SPAREPRINTPR -- Interpret and print buffer data as a ProFile spare table
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D1/A0.
+    ;   Will attempt to interpret and print whatever data is present in the
+    ;       disk buffer as a ProFile spare table.
+    ;   No guarantees that this subroutine won't loop forever or do something
+    ;       else crazy if given malformed data.
+SPAREPRINTPR:
     ; Set A0 to the start of the spare table.
     MOVEA.L #(zSectorTag+$1A),A0     ; Spare table is 26 bytes in
 
@@ -343,15 +357,18 @@ _SPAREPRINTPR:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'BAD BLOCK TABLE ENDS WITH '>,3x
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<' AND NOT FFFFFF? ODD...'>
 
-.rt RTS                              ; Back to SPAREPRINT's caller
+.rt RTS                              ; Back to SPAREPRINT(PR)'s caller
 
-    ; SPAREPRINT branch for printing Widget spare tables (in detail)
-_SPAREPRINTWI:
-    ; Load the Widget's spare table.
-    MOVE.L  #$00FFFFFE,D1            ; Sector ID for the Widget spare table
-    BSR     SECTOR                   ; Read the spare table
-    BCS     .rt                      ; Jump to return on error
-
+    ; SPAREPRINTWI -- Interpret and print buffer data as a Widget spare table
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D2/A0-A2.
+    ;   Will attempt to interpret and print whatever data is present in the
+    ;       disk buffer as a Widget spare table.
+    ;   No guarantees that this subroutine won't loop forever or do something
+    ;       else crazy if given malformed data.
+SPAREPRINTWI:
     MOVEA.L #(zSectorTag+$4),A0      ; Address for spare table revision to A0
     MOVE.L  (A0)+,-(A7)              ; And copied to stack for printing
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'THIS SPARE TABLE HAS BEEN REVISED '>
@@ -506,7 +523,7 @@ _SPAREPRINTWI:
 
 .rt RTS                              ; Return to caller
 
-    ; Tiny subroutine that _SPAREPRINTWI uses to print YES or NO in the spare
+    ; Tiny subroutine that SPAREPRINTWI uses to print YES or NO in the spare
     ; table readout for various flags.
 .yn BEQ.S   .no
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<' .   YES  '>
@@ -514,7 +531,7 @@ _SPAREPRINTWI:
 .no mPrint  kCrtRow,kCrtCol,#kFirstCol,<' .   NO   '>
     RTS                              ; Return to caller
 
-    ; Tiny subroutine that allows _SPAREPRINTWI to compare drive parameters
+    ; Tiny subroutine that allows SPAREPRINTWI to compare drive parameters
     ; from sector $FFFFFE (the spare table) with their counterparts from
     ; sector $FFFFFF (loaded by WIDGETINFO).
 .cm CMP.B   D0,D1
@@ -523,7 +540,7 @@ _SPAREPRINTWI:
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'?'>,pendl
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'...SECTOR FFFFFF SAID IT WAS '>
     mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,pendl
-.rc RTS                              ; Back to caller (i.e. _SPAREPRINTWI)
+.rc RTS                              ; Back to caller
 
 
     PAGE

@@ -11,6 +11,7 @@
 *      Macros from NeoWidEx_MACROS must be defined.
 *      Resources from NeoWidEx_UI must be defined.
 *      Resources from NeoWidEx_UI_FORMS must be defined.
+*      Resources from NeoWidEx_WIDGETINFO must be defined.
 *-----------------------------------------------------------
 
 
@@ -27,12 +28,12 @@ BUFFER:
     mMenuUi #sBufferMenu,#dBufferMenuHandlers  ; Buffer menu UI loop
     RTS                              ; Return to the main menu
 
-    ; _RAWPRINT -- Display hex dump of data in the disk data buffer, with CRC
+    ; _RAWSHOW -- Display hex dump of data in the disk data buffer, with CRC
     ; Args:
     ;   (none)
     ; Notes:
     ;   Trashes D0-D2/D5/A0-A1.
-_RAWPRINT:
+_RAWSHOW:
     ; Do setup and print header
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- DISK BUFFER CONTENTS ---'>
     LEA     zSectorTag,A0            ; Starting address of buffer
@@ -88,6 +89,32 @@ _CRC:
 .db DBRA    D1,.li                   ;     Repeat for the next bit
     DBRA    D2,.lo                   ;   Repeat outer loop for next byte
 .rt RTS                              ; Back to caller
+
+    ; _SPARESHOW - Parse buffer as a spare table, and print
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D5/A0-A4.
+_SPARESHOW:
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- BUFFER AS SPARE TABLE ---'>
+    LEA     s_ShowAsSprTblForm,A0    ; Prepare FORM args; address of template...
+    LEA     s_ShowAsSprTblPrompts,A1   ; ...address of prompt pointer array...
+    SUBA.L  A2,A2                    ; ...defaulting to N for the form value...
+    SUBA.L  A3,A3                    ; ...and no bounds specified.
+    BSR     FORM                     ; Launch the form
+    ; Back from form, did user want to cancel?
+    TST.B   zFormIntent              ; Did the user cancel?
+    BNE.S   .go                      ; No, jump ahead to parse and print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
+    RTS                              ; Back to caller
+.go mPrtCr  kCrtRow,kCrtCol,#kFirstCol   ; SPAREPRINT?? need a newline first.
+    mResetP                          ; Reset paging (only needed for Widget)
+    TST.B   (3+zFieldValues)         ; Did user want a ProFile spare dump?
+    BNE.S   .pr                      ; Yes, jump to print it
+    BSR     SPAREPRINTWI             ; No, parse/print buf as Widget spare table
+    RTS                              ; Back to caller
+.pr BSR     SPAREPRINTPR             ; Parse/print buffer as ProFile spare table
+    RTS                              ; Back to caller
 
     ; _EDIT -- Edit tag and sector information
     ; Args:
@@ -422,9 +449,10 @@ _SECTSUFFIX:
     DS.W    0                        ; Force even alignment for what follows
 dBufferMenuHandlers:                 ; Addresses of handlers for each of the...
     DC.L    (1+GOBACK)               ; ...menu items in sBufferMenu
-    DC.L    _RAWPRINT                ; 1+ means don't print a newline before...
-    DC.L    _EDIT                    ; ...calling this handler; the LSBit...
-    DC.L    _PATTERN                 ; ...will be cleared before the call
+    DC.L    _RAWSHOW                 ; 1+ means don't print a newline before...
+    DC.L    _SPARESHOW               ; ...calling this handler; the LSBit...
+    DC.L    _EDIT                    ; ...will be cleared before the call
+    DC.L    _PATTERN
     DC.L    _RANDOM
     DC.L    _RESIZE
     DC.L    $00000000                ; Null terminator
@@ -527,18 +555,27 @@ s_ResizePrompts:                     ; Form prompts for buffer sizing
 .p2 DC.B    'TAG LONGWORDS',0
 .p3 DC.B    'DATA LONGWORDS',0
 
+s_ShowAsSprTblForm:
+    DC.B    $0D,'DECODE PROFILE FORMAT INSTEAD OF WIDGET FORMAT? a'
+
+    DS.W    0
+s_ShowAsSprTblPrompts:               ; Form prompts for spare table type
+    DC.L    .p1
+.p1 DC.B    'PROFILE',0
 
 sBufferMenu:
     DC.B    'DATA BUFFER',0          ; Menu title
     DC.B    'GO BACK...    1',0
     DC.B    'SHOW CONTENTS 2',0
-    DC.B    'EDIT CONTENTS 3',0
-    DC.B    'PATTERN FILL  4',0
-    DC.B    'RANDOM FILL   5',0
-    DC.B    'RESIZE BUFFER 6',0
+    DC.B    '...AS SPR TBL 3',0
+    DC.B    'EDIT CONTENTS 4',0
+    DC.B    'PATTERN FILL  5',0
+    DC.B    'RANDOM FILL   6',0
+    DC.B    'RESIZE BUFFER 7',0
     DC.B    0                        ; End of menu
     DC.B    $01                      ; Divider after item 1
-    DC.B    $05                      ; Divider after item 5
+    DC.B    $03                      ; Divider after item 3
+    DC.B    $06                      ; Divider after item 6
     DC.B    0                        ; No more dividers
 
 
