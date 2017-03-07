@@ -98,6 +98,8 @@ _NOTYET:
 
     INCLUDE NeoWidEx_CMD_Initialize_SpareTable.X68
 
+    INCLUDE NeoWidEx_CMD_Format_Track.X68
+
     INCLUDE NeoWidEx_CMD_Read_Controller_Status.X68
 
     INCLUDE NeoWidEx_CMD_Read_Servo_Status.X68
@@ -109,6 +111,8 @@ _NOTYET:
     INCLUDE NeoWidEx_CMD_Send_Park.X68
 
     INCLUDE NeoWidEx_CMD_Send_Seek.X68
+
+    INCLUDE NeoWidEx_CMD_Set_AutoOffset.X68
 
     INCLUDE NeoWidEx_CMD_Reset_Servo.X68
 
@@ -133,6 +137,7 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Read_Servo_Status
     DC.L    SPAREPRINT
     DC.L    CMD_Set_Recovery
+    DC.L    CMD_Set_AutoOffset
     DC.L    CMD_ProFile_Read
     DC.L    CMD_ProFile_Write
     DC.L    CMD_Sys_Read
@@ -145,7 +150,7 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Reset_Servo
     DC.L    CMD_Send_Park
     DC.L    CMD_Initialize_SpareTable
-    DC.L    _NOTYET
+    DC.L    CMD_Format_Track
     DC.L    (1+UTILITIES)
     DC.L    _THANKS
     DC.L    (1+GOBACK)
@@ -170,29 +175,30 @@ sMainMenu:
     DC.B    'SERVO STATUS  5',0
     DC.B    'SPARE TABLE   6',0
     DC.B    'SET RECOVERY  7',0
-    DC.B    'GENERIC READ  8',0
-    DC.B    'GENERIC WRITE 9',0
-    DC.B    'WIDGET READ   A',0
-    DC.B    'WIDGET WRITE  B',0
-    DC.B    'SEEK          C',0
-    DC.B    'READ AT SEEK  D',0
-    DC.B    'WRITE AT SEEK E',0
-    DC.B    'SCAN          F',0
-    DC.B    'SOFT RESET    G',0
-    DC.B    'RESET SERVO   H',0
-    DC.B    'PARK HEADS    I',0
-    DC.B    'INIT SPR TBL  J',0
-    DC.B    'FORMAT TRACK  K',0
-    DC.B    'UTILITIES...  L',0
-    DC.B    'THANKS        M',0
-    DC.B    'QUIT          N',0
+    DC.B    'AUTOOFFSET ON 8',0
+    DC.B    'GENERIC READ  9',0
+    DC.B    'GENERIC WRITE A',0
+    DC.B    'WIDGET READ   B',0
+    DC.B    'WIDGET WRITE  C',0
+    DC.B    'SEEK          D',0
+    DC.B    'READ AT SEEK  E',0
+    DC.B    'WRITE AT SEEK F',0
+    DC.B    'SCAN          G',0
+    DC.B    'SOFT RESET    H',0
+    DC.B    'RESET SERVO   I',0
+    DC.B    'PARK HEADS    J',0
+    DC.B    'INIT SPR TBL  K',0
+    DC.B    'FORMAT TRACK  L',0
+    DC.B    'UTILITIES...  M',0
+    DC.B    'THANKS        N',0
+    DC.B    'QUIT          O',0
     DC.B    0                        ; End of menu
     DC.B    $06                      ; Divider after item 6
-    DC.B    $07                      ; Divider after item 7
-    DC.B    $0E                      ; Divider after item E
-    DC.B    $12                      ; Divider after item I
-    DC.B    $14                      ; Divider after item K
+    DC.B    $08                      ; Divider after item 8
+    DC.B    $0F                      ; Divider after item F
+    DC.B    $13                      ; Divider after item J
     DC.B    $15                      ; Divider after item L
+    DC.B    $16                      ; Divider after item M
     DC.B    0                        ; No more dividers
 
 
