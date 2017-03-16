@@ -53,7 +53,7 @@ _RAWSHOW:
     MOVEA.L A1,A0                    ;   The CRC calculation starts here
     BSR     _SECTSIZED2              ;   Size of memory to scan in longs to D2
     LSL.W   #2,D2                    ;   Convert size to bytes
-    BSR     _CRC                     ;   Calculate CRC now
+    BSR     CRC                      ;   Calculate CRC now
     mPrint  kCrtRow,kCrtCol,#kFirstCol,qpendl  ; qpendl needs an empty stack
     MOVE.W  D0,-(A7)                 ;   Copy CRC onto stack
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'TAG/SECTOR CRC16-'>,hx
@@ -66,7 +66,7 @@ _RAWSHOW:
 
 .rt RTS                              ; Back to caller
 
-    ; _CRC -- Compute 16-bit CRC of some data region
+    ; CRC -- Compute 16-bit CRC of some data region
     ; Args:
     ;   D2: Word counting number of bytes of memory region to scan
     ;   A0: Points to start of memory region to scan
@@ -74,7 +74,7 @@ _RAWSHOW:
     ;   When finished, A0 points just past the memory region scanned
     ;   Trashes D0-D2/A0.
     ;   Computed CRC goes in D0.
-_CRC:
+CRC:
     CLR.W   D0                       ; Initialise CRC with zeroes
     TST.W   D2                       ; What if the caller said: scan no bytes?
     BEQ.S   .rt                      ; No bytes left to scan? Return
@@ -334,22 +334,23 @@ _RANDOM:
     MOVE.B  z_BufferNumSectors,D4    ; Number of sectors to fill
 .lp BSR     _SECTSIZED2              ;   Size of memory to fill in longs to D2
     LSL.W   #2,D2                    ;   Convert longwords to bytes
-    BSR     _LFSRFILL                ;   Call random filler
+    BSR     LFSRFILL                 ;   Call random filler
     SUBQ.B  #1,D4                    ;   Decrement sectors; all done?
     BNE.S   .lp                      ;   No, on to the next sector
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
     RTS                              ; Back to caller
 
-    ; _LFSRFILL -- Fill a memory region with LFSR-generated random data
+    ; LFSRFILL -- Fill a memory region with LFSR-generated random data
     ; Args:
     ;   D0: LFSR initial value; must not be $0000
     ;   D2: Word counting number of bytes to fill
     ;   A0: Points to start of memory region to fill
     ; Notes:
     ;   http://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
-    ;   When finished, A0 points just past the memory region filled
+    ;   When finished, A0 points just past the memory region filled, and D0
+    ;       contains the LFSR's internal state.
     ;   Trashes D0-D3/A0.
-_LFSRFILL:
+LFSRFILL:
     TST.W   D2                       ; What if caller didn't want any bytes?
 .lo BEQ.S   .rt                      ;   No bytes left to fill? Return
 

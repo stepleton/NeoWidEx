@@ -184,7 +184,7 @@ mPrtHxB     MACRO
 mPrtHxW     MACRO
       MOVEM.L D0/A3,-(A7)            ; Save register contents
       MOVE.W  8(A7),D0               ; Copy argument word from stack to D0
-      BSR.W   HEXW2STR               ; Convert word to a string at zNumToStr
+      JSR     HEXW2STR               ; Convert word to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
       ADDQ.L  #2,A7                  ; Drop word from stack
@@ -203,7 +203,7 @@ mPrtHxW     MACRO
 mPrtHx3     MACRO
       MOVEM.L D0/A3,-(A7)            ; Save register contents
       MOVE.L  8(A7),D0               ; Copy argument long from stack to D0
-      BSR.W   HEX3B2STR              ; Convert long to a string at zNumToStr
+      JSR     HEX3B2STR              ; Convert long to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
       ADDQ.L  #4,A7                  ; Drop long from stack

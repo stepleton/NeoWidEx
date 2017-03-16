@@ -64,7 +64,7 @@ CMD_ProFile_Write:
     mMemCpy #zProWriteCmd,#zWIOCmd,#4  ; We copy it to the command buffer
     CLR.W   zWIOReadLen              ; No command in this file reads bytes
     MOVE.W  zBlockSize,zWIOWriteLen  ; Write a whole block to the Widget
-    MOVE.L  #zSectorTag,zWIOWritePtr ; Write data at this memory location
+    MOVE.L  #zSectorTag,zWIOWritePtr   ; Write data at this memory location
     BSR     WIDGETIO                 ; Issue command
     BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
     TST.B   zWIOError                ; Did the write command go ok?
@@ -82,7 +82,7 @@ CMD_ProFile_Write:
 * NeoWidEx ProFile_Write scratch data allocation ===========
     SECTION kSecScratch
 
-    DS.W    0                        ; (Alignment makes copying easier.)
+    DS.W    0                        ; (Alignment makes copying easier)
 zProWriteCmd:
     DC.B    $01,$00,$00,$00          ; Write command; bytes 2-4 are alterable
 

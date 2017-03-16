@@ -29,6 +29,8 @@ UTILITIES:
 
     INCLUDE NeoWidEx_UTIL_Grep.X68
 
+    INCLUDE NeoWidEx_UTIL_Exercise_Disk.X68
+
     PAGE
 * NeoWidEx assorted utilities numerical data ===============
     SECTION kSecData
@@ -38,7 +40,7 @@ dUtilitiesMenuHandlers:              ; Addresses of handlers for each of the...
     DC.L    (1+GOBACK)               ; ...menu items in sUtilitiesMenu
     DC.L    UTIL_Grep_Sectors        ; 1+ means don't print a newline before...
     DC.L    UTIL_Grep_Blocks         ; ...calling this handler; the LSBit...
-    DC.L    _NOTYET                  ; ...will be cleared before the call
+    DC.L    UTIL_Exercise_Disk       ; ...will be cleared before the call
     DC.L    _NOTYET
     DC.L    $00000000                ; Null terminator
 

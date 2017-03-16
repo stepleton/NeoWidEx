@@ -156,9 +156,9 @@ UTIL_Grep_Blocks:
 
 .dn MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DONE.         '>
-.rt RTS
+.rt RTS                              ; Back to caller
 
-.qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
+.qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Ack user quit
     RTS                              ; Back to caller
 
 .er BSR     WIDGETPERROR             ; Error! Print error message
@@ -482,7 +482,7 @@ z_UGrepProReadCmd:                   ; ProFile_Read cmd; last 3 bytes can change
 
 
     PAGE
-* NeoWidEx Grep_Sectors strings ============================
+* NeoWidEx Grep strings ====================================
     SECTION kSecStrings
 
 s_UGrepSecStatusSeek:
