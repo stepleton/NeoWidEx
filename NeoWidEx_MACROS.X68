@@ -222,7 +222,7 @@ mPrtHx3     MACRO
 mPrtHxL     MACRO
       MOVEM.L D0/A3,-(A7)            ; Save register contents
       MOVE.L  8(A7),D0               ; Copy argument long from stack to D0
-      BSR.W   HEXL2STR               ; Convert long to a string at zNumToStr
+      JSR     HEXL2STR               ; Convert long to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
       ADDQ.L  #4,A7                  ; Drop long from stack
@@ -301,7 +301,7 @@ mPrtCrP     MACRO
               IFNC '\3','D4'
       MOVE.W \3,D4                   ; Next line first column (chars/bytes)
               ENDC
-      BSR.W   PAGEDNEWLINE           ; Invoke paging newline printer
+      JSR     PAGEDNEWLINE           ; Invoke paging newline printer
       MOVE.W  D5,\1                  ; Copy new row to row storage
       MOVE.W  D6,\2                  ; Copy new column to column storage
       MOVEM.L (A7)+,D4-D6/A6         ; Restore register contents
@@ -352,7 +352,7 @@ mResetP     MACRO
 mPrtX       MACRO
               IFC <'\5'>,<'qpendl'>
       mPrtCrP \1,\2,\3               ; Move to the next line, with paging
-      BSR     PAGEDRTS               ; Break out of current subroutine on 'q'
+      JSR     PAGEDRTS               ; Break out of current subroutine on 'q'
               ENDC
               IFC <'\5'>,<'pendl'>
       mPrtCrP \1,\2,\3               ; Move to the next line, with paging

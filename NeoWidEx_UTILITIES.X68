@@ -31,6 +31,8 @@ UTILITIES:
 
     INCLUDE NeoWidEx_UTIL_Exercise_Disk.X68
 
+    INCLUDE NeoWidEx_UTIL_Track_Offsets.X68
+
     PAGE
 * NeoWidEx assorted utilities numerical data ===============
     SECTION kSecData
@@ -41,6 +43,7 @@ dUtilitiesMenuHandlers:              ; Addresses of handlers for each of the...
     DC.L    UTIL_Grep_Sectors        ; 1+ means don't print a newline before...
     DC.L    UTIL_Grep_Blocks         ; ...calling this handler; the LSBit...
     DC.L    UTIL_Exercise_Disk       ; ...will be cleared before the call
+    DC.L    UTIL_Track_Offsets
     DC.L    _NOTYET
     DC.L    $00000000                ; Null terminator
 
@@ -60,7 +63,8 @@ sUtilitiesMenu:
     DC.B    'GREP SECTORS  2',0
     DC.B    'GREP BLOCKS   3',0
     DC.B    'EXERCISE DISK 4',0
-    DC.B    'FORMAT        5',0
+    DC.B    'TRACK OFFSETS 5',0
+    DC.B    'FORMAT        6',0
     DC.B    0                        ; End of menu
     DC.B    $01                      ; Divider after item 1
     DC.B    0                        ; No more dividers

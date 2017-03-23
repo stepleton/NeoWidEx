@@ -99,7 +99,7 @@ WIDGETCMD:
     ;   zWIOWriteLen: Number of bytes to write per cycles, if any
     ;   zWIOWritePtr: Where bytes to write are stored
     ; Notes:
-    ;   The Z bit is set iff a failure occurs, and a one-byte error code is
+    ;   The Z bit is cleared iff a failure occurs, and a one-byte error code is
     ;       saved at zWIOError. (On success, zWIOError is $00.)
     ;   After successful operations, drive status bytes are saved at kStdStatus.
 WIDGETIO:

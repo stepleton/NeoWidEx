@@ -116,6 +116,17 @@ _SPARESHOW:
 .pr BSR     SPAREPRINTPR             ; Parse/print buffer as ProFile spare table
     RTS                              ; Back to caller
 
+    ; _HEADERSHOW -- Show header data loaded by Diag_ReadHeader.
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes A0.
+_HEADERSHOW:
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SECTOR HEADER ---'>
+    LEA     zSectorHeader,A0         ; Point A0 to the start of the header
+    mDump.B kCrtRow,kCrtCol,#kFirstCol,A0,#(zSectorTag-zSectorHeader),endl
+    RTS                              ; Back to caller
+
     ; _EDIT -- Edit tag and sector information
     ; Args:
     ;   (none)
@@ -452,7 +463,8 @@ dBufferMenuHandlers:                 ; Addresses of handlers for each of the...
     DC.L    (1+GOBACK)               ; ...menu items in sBufferMenu
     DC.L    _RAWSHOW                 ; 1+ means don't print a newline before...
     DC.L    _SPARESHOW               ; ...calling this handler; the LSBit...
-    DC.L    _EDIT                    ; ...will be cleared before the call
+    DC.L    _HEADERSHOW              ; ...will be cleared before the call
+    DC.L    _EDIT
     DC.L    _PATTERN
     DC.L    _RANDOM
     DC.L    _RESIZE
@@ -569,14 +581,15 @@ sBufferMenu:
     DC.B    'GO BACK...    1',0
     DC.B    'SHOW CONTENTS 2',0
     DC.B    '...AS SPR TBL 3',0
-    DC.B    'EDIT CONTENTS 4',0
-    DC.B    'PATTERN FILL  5',0
-    DC.B    'RANDOM FILL   6',0
-    DC.B    'RESIZE BUFFER 7',0
+    DC.B    'SECTOR HEADER 4',0
+    DC.B    'EDIT CONTENTS 5',0
+    DC.B    'PATTERN FILL  6',0
+    DC.B    'RANDOM FILL   7',0
+    DC.B    'RESIZE BUFFER 8',0
     DC.B    0                        ; End of menu
     DC.B    $01                      ; Divider after item 1
-    DC.B    $03                      ; Divider after item 3
-    DC.B    $06                      ; Divider after item 6
+    DC.B    $04                      ; Divider after item 3
+    DC.B    $07                      ; Divider after item 6
     DC.B    0                        ; No more dividers
 
 

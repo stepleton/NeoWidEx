@@ -47,7 +47,7 @@ CMD_Read_Servo_Status:
     ; Print servo status bitmap 1 part 1 with explanatory text.
     mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sServoStatus1Btmap1,zServoStatus1
     MOVE.B  (zServoStatus1+1),D0     ; Byte 1 to D0 to print offset DAC value
-    BSR     _PRINTSERVOOFFSETDAC     ; Print offset DAC value
+    BSR     PRINTSERVOOFFSETDAC      ; Print offset DAC value
     ; Print servo status bitmap 1 part 2 with explanatory text.
     mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sServoStatus1Btmap2,zServoStatus1
     ; Done with this page
@@ -121,7 +121,7 @@ CMD_Read_Servo_Status:
     ; Print servo status bitmap 5 part 4 with explanatory text.
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sServoStatus5Btmap4
     MOVE.B  (zServoStatus5+3),D0     ; Byte 4 to D0 to print offset DAC value
-    BSR     _PRINTSERVOOFFSETDAC     ; Print offset DAC value
+    BSR     PRINTSERVOOFFSETDAC      ; Print offset DAC value
     ; Print servo status bitmap 5 part 5 with explanatory text.
     mPrtBts kCrtRow,kCrtCol,#kFirstCol,export,#sServoStatus5Btmap5,zServoStatus5
     ; Done with this page
@@ -184,13 +184,12 @@ CMD_Read_Servo_Status:
     RTS                              ; Back to caller
 
 
-    ; _PRINTSERVOOFFSETDAC -- CMD_Read_Servo_Status helper: print offset DAC.
+    ; PRINTSERVOOFFSETDAC -- CMD_Read_Servo_Status helper: print offset DAC.
     ; Args:
     ;   D0: status byte containing offset DAC value.
     ; Notes:
-    ;   Pops offset DAC value off the stack after printing.
     ;   Trashes D0.
-_PRINTSERVOOFFSETDAC:
+PRINTSERVOOFFSETDAC:
     BTST.L  #$02,D0                  ; What's the value's sign?
     BNE.S   .ps                      ; Positive; skip ahead
     mPrtLit kCrtRow,kCrtCol,#kFirstCol,noexport,<'-'>  ; Negative; print '-'

@@ -139,13 +139,13 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Read_Servo_Status
     DC.L    SPAREPRINT
     DC.L    CMD_Set_Recovery
-    DC.L    CMD_Set_AutoOffset
-    DC.L    CMD_Send_Restore
     DC.L    CMD_ProFile_Read
     DC.L    CMD_ProFile_Write
     DC.L    CMD_Sys_Read
     DC.L    _NOTYET
+    DC.L    CMD_Send_Restore
     DC.L    CMD_Send_Seek
+    DC.L    CMD_Set_AutoOffset
     DC.L    CMD_Diag_Read
     DC.L    CMD_Diag_Write
     DC.L    CMD_Scan
@@ -178,13 +178,13 @@ sMainMenu:
     DC.B    'SERVO STATUS  5',0
     DC.B    'SPARE TABLE   6',0
     DC.B    'SET RECOVERY  7',0
-    DC.B    'AUTOOFFSET ON 8',0
-    DC.B    'SEND RESTORE  9',0
-    DC.B    'GENERIC READ  A',0
-    DC.B    'GENERIC WRITE B',0
-    DC.B    'WIDGET READ   C',0
-    DC.B    'WIDGET WRITE  D',0
-    DC.B    'SEEK          E',0
+    DC.B    'GENERIC READ  8',0
+    DC.B    'GENERIC WRITE 9',0
+    DC.B    'WIDGET READ   A',0
+    DC.B    'WIDGET WRITE  B',0
+    DC.B    'SEND RESTORE  C',0
+    DC.B    'SEEK          D',0
+    DC.B    'AUTOOFFSET    E',0
     DC.B    'READ AT SEEK  F',0
     DC.B    'WRITE AT SEEK G',0
     DC.B    'SCAN          H',0
@@ -198,7 +198,8 @@ sMainMenu:
     DC.B    'QUIT          P',0
     DC.B    0                        ; End of menu
     DC.B    $06                      ; Divider after item 6
-    DC.B    $09                      ; Divider after item 9
+    DC.B    $07                      ; Divider after item 7
+    DC.B    $0B                      ; Divider after item B
     DC.B    $10                      ; Divider after item G
     DC.B    $14                      ; Divider after item K
     DC.B    $16                      ; Divider after item M
@@ -209,7 +210,10 @@ sMainMenu:
     PAGE
 * Loaded disk sector storage area ==========================
 
-    DS.W    0                        ; Force even word alignment
+    DS.W    0                        ; Force even word alignment at tag start
+    DS.B    1                        ; This byte is unused
+zSectorHeader:
+    DS.B    13                       ; Space for Diag_ReadHeader header
 zSectorTag:
     DS.B    20                       ; Space for sector tag
 zSectorData:

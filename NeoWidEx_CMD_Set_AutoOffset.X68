@@ -24,7 +24,7 @@
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 CMD_Set_AutoOffset:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SET AUTO-OFFSET ---'>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- AUTO-OFFSET HEADS ---'>
     MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdSetAutoOffset,A0     ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
