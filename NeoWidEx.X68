@@ -21,11 +21,11 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $A000                    ; Various numerical data items live here
+    ORG     $A800                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $A400                    ; Structured scratch space
+    ORG     $AC00                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $A800                    ; Program strings bring up the rear
+    ORG     $B000                    ; Program strings bring up the rear
     SECTION kSecCode
 
 
@@ -92,6 +92,8 @@ _NOTYET:
 
     INCLUDE NeoWidEx_CMD_Diag_Read.X68
 
+    INCLUDE NeoWidEx_CMD_Diag_ReadHeader.X68
+
     INCLUDE NeoWidEx_CMD_Diag_Write.X68
 
     INCLUDE NeoWidEx_CMD_Sys_Read.X68
@@ -103,6 +105,8 @@ _NOTYET:
     INCLUDE NeoWidEx_CMD_Read_Controller_Status.X68
 
     INCLUDE NeoWidEx_CMD_Read_Servo_Status.X68
+
+    INCLUDE NeoWidEx_CMD_Read_Abort_Status.X68
 
     INCLUDE NeoWidEx_CMD_Set_Recovery.X68
 
@@ -135,9 +139,10 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    STATUSPRINT              ; ...menu items in sMainMenu
     DC.L    (1+BUFFER)               ; 1+ means don't print a newline before...
     DC.L    WINFOPRINT               ; ...calling this handler; the LSBit...
-    DC.L    CMD_Read_Ctrlr_Status    ; ...will be cleared before the call
+    DC.L    SPAREPRINT               ; ...will be cleared before the call
+    DC.L    CMD_Read_Ctrlr_Status
     DC.L    CMD_Read_Servo_Status
-    DC.L    SPAREPRINT
+    DC.L    CMD_Read_Abort_Status
     DC.L    CMD_Set_Recovery
     DC.L    CMD_ProFile_Read
     DC.L    CMD_ProFile_Write
@@ -148,6 +153,7 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Set_AutoOffset
     DC.L    CMD_Diag_Read
     DC.L    CMD_Diag_Write
+    DC.L    CMD_Diag_ReadHeader
     DC.L    CMD_Scan
     DC.L    CMD_Soft_Reset
     DC.L    CMD_Reset_Servo
@@ -155,8 +161,8 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Initialize_SpareTable
     DC.L    CMD_Format_Track
     DC.L    (1+UTILITIES)
-    DC.L    _THANKS
     DC.L    (1+GOBACK)
+    DC.L    _THANKS
     DC.L    $00000000                ; Null terminator
 
 
@@ -170,40 +176,42 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     SECTION kSecStrings
 
 sMainMenu:
-    DC.B    'COMMANDS',0             ; Menu title
+    DC.B    'MENU',0                 ; Menu title
     DC.B    'LAST STATUS   1',0
     DC.B    'BUFFER...     2',0
     DC.B    'DRIVE INFO    3',0
-    DC.B    'FULL STATUS   4',0
-    DC.B    'SERVO STATUS  5',0
-    DC.B    'SPARE TABLE   6',0
-    DC.B    'SET RECOVERY  7',0
-    DC.B    'GENERIC READ  8',0
-    DC.B    'GENERIC WRITE 9',0
-    DC.B    'WIDGET READ   A',0
-    DC.B    'WIDGET WRITE  B',0
-    DC.B    'SEND RESTORE  C',0
-    DC.B    'SEEK          D',0
-    DC.B    'AUTOOFFSET    E',0
-    DC.B    'READ AT SEEK  F',0
-    DC.B    'WRITE AT SEEK G',0
-    DC.B    'SCAN          H',0
-    DC.B    'SOFT RESET    I',0
-    DC.B    'RESET SERVO   J',0
-    DC.B    'PARK HEADS    K',0
-    DC.B    'INIT SPR TBL  L',0
-    DC.B    'FORMAT TRACK  M',0
-    DC.B    'UTILITIES...  N',0
-    DC.B    'THANKS        O',0
-    DC.B    'QUIT          P',0
+    DC.B    'SPARE TABLE   4',0
+    DC.B    'FULL STATUS   5',0
+    DC.B    'SERVO STATUS  6',0
+    DC.B    'ABORT STATUS  7',0
+    DC.B    'SET RECOVERY  8',0
+    DC.B    'GENERIC READ  9',0
+    DC.B    'GENERIC WRITE A',0
+    DC.B    'WIDGET READ   B',0
+    DC.B    'WIDGET WRITE  C',0
+    DC.B    'SEND RESTORE  D',0
+    DC.B    'SEEK          E',0
+    DC.B    'AUTOOFFSET    F',0
+    DC.B    'READ AT SEEK  G',0
+    DC.B    'WRITE AT SEEK H',0
+    DC.B    'READ HEADER   I',0
+    DC.B    'SCAN          J',0
+    DC.B    'SOFT RESET    K',0
+    DC.B    'RESET SERVO   L',0
+    DC.B    'PARK HEADS    M',0
+    DC.B    'INIT SPR TBL  N',0
+    DC.B    'FORMAT TRACK  O',0
+    DC.B    'UTILITIES...  P',0
+    DC.B    'QUIT          Q',0
+    DC.B    'THANKS        R',0 
     DC.B    0                        ; End of menu
-    DC.B    $06                      ; Divider after item 6
-    DC.B    $07                      ; Divider after item 7
-    DC.B    $0B                      ; Divider after item B
-    DC.B    $10                      ; Divider after item G
-    DC.B    $14                      ; Divider after item K
-    DC.B    $16                      ; Divider after item M
-    DC.B    $17                      ; Divider after item N
+    DC.B    $07                      ; Divider after item 6
+    DC.B    $08                      ; Divider after item 7
+    DC.B    $0C                      ; Divider after item B
+    DC.B    $12                      ; Divider after item H
+    DC.B    $16                      ; Divider after item L
+    DC.B    $18                      ; Divider after item N
+    DC.B    $19                      ; Divider after item O
     DC.B    0                        ; No more dividers
 
 

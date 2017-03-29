@@ -120,7 +120,7 @@ UTIL_Exercise_Disk:
     CLR.W   zWIOReadLen              ; This command reads no bytes
     MOVE.W  zBlockSize,zWIOWriteLen  ; Write a whole block to the drive
     MOVE.L  #zSectorTag,zWIOWritePtr   ; Write data at this memory location
-    BSR     WIDGETIO                 ; Issue command
+    JSR     WIDGETIO                 ; Issue command
     BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
 
     LEA     d_UExrDiskWriteCounters,A1   ; Prepare to update write anomaly ctrs.
@@ -136,7 +136,7 @@ UTIL_Exercise_Disk:
     MOVE.W  zBlockSize,zWIOReadLen   ; Read a whole block from the drive
     CLR.W   zWIOWriteLen             ; This command writes no bytes
     MOVE.L  #zSectorTag,zWIOReadPtr  ; Read data to this memory location
-    BSR     WIDGETIO                 ; Issue command
+    JSR     WIDGETIO                 ; Issue command
     BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
 
     LEA     d_UExrDiskReadCounters,A1  ; Prepare to update read anomaly counters

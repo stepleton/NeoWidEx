@@ -165,7 +165,7 @@ mPrtLit     MACRO
 mPrtHxB     MACRO
       MOVEM.L D0/A3,-(A7)            ; Save register contents
       MOVE.B  8(A7),D0               ; Copy argument byte from stack to D0
-      BSR.W   HEXB2STR               ; Convert byte to a string at zNumToStr
+      JSR     HEXB2STR               ; Convert byte to a string at zNumToStr
       mPrtMem \1,\2,\3,\4,A3         ; Print the converted string
       MOVEM.L (A7)+,D0/A3            ; Restore register contents
       ADDQ.L  #2,A7                  ; Drop byte from stack
@@ -266,7 +266,7 @@ mPrtCr      MACRO
               IFNC '\3','D4'
       MOVE.W \3,D4                   ; Next line first column (chars/bytes)
               ENDC
-      BSR.W   NEWLINE                ; Invoke newline printer
+      JSR     NEWLINE                ; Invoke newline printer
       MOVE.W  D5,\1                  ; Copy new row to row storage
       MOVE.W  D6,\2                  ; Copy new column to column storage
       MOVEM.L (A7)+,D4-D6/A6         ; Restore register contents
@@ -470,7 +470,7 @@ mPrint      MACRO
 mMenuUi     MACRO
 .l\@  MOVE.L  \1,zUiLoopMenu         ; Load UI loop arguments
       MOVE.L  \2,zUiLoopMenuHandlers
-      BSR     UILOOP                 ; Execute the UI loop indefinitely
+      JSR     UILOOP                 ; Execute the UI loop indefinitely
       BMI.S   .l\@                   ; If a submenu exited, repeat the UI loop
       NEG.B   zUiLoopBreak           ; Otherwise, mark this menu as exiting
             ENDM

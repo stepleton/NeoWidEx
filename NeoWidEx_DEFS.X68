@@ -28,6 +28,8 @@ kSctrTime   EQU  $1200000            ; Widget sector read timeout: ~3 minutes
 kSctrTries  EQU  $10                 ; Widget sector read retry count
 kSctrThresh EQU  $3                  ; Widget sparing threshold count
 
+kHeaderSize EQU  $D                  ; Widget sector header size: 13 bytes
+
 kKeyCodeClr EQU  $A0                 ; Key code for the keypad clear key
 kKeyCodeLft EQU  $A2                 ; Key code for the keypad left key
 kKeyCodeRgt EQU  $A3                 ; Key code for the keypad right key

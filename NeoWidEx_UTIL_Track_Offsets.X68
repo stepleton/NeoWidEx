@@ -241,7 +241,7 @@ _UTrakOfstCheckTrack:
     LEA     z_UTrakOfstCmdDiagRdHdr,A0   ; RAM location of the command template
     JSR     WIDGETCMD                ; Construct actual command in RAM
     MOVE.W  zBlockSize,zWIOReadLen   ; Read a whole block from the Widget...
-    ADDI.W  #$0D,zWIOReadLen         ; ...plus a diagnostic header up front
+    ADDI.W  #kHeaderSize,zWIOReadLen   ; ...plus a diagnostic header up front
     MOVE.L  #zSectorHeader,zWIOReadPtr   ; Read into this memory location
     CLR.W   zWIOWriteLen             ; This command writes no data
     JSR     WIDGETIO                 ; Issue command

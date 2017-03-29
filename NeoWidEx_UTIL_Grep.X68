@@ -79,7 +79,7 @@ UTIL_Grep_Sectors:
 .nx BSR     _UGrepSec_NEXTSECTOR     ;   Increment the sector in D1
     CMP.L   z_UGrepStartPos,D1       ;   Are we back at the beginning?
     BEQ.S   .dn                      ;   Yes, jump out to the exit.
-    BSR     QUITPOLL                 ;   No, but did the user press the 'q' key?
+    JSR     QUITPOLL                 ;   No, but did the user press the 'q' key?
     BEQ.S   .qt                      ;   If so, jump ahead to exit
     BRA     .lp                      ;   Otherwise, search on in the new sector
 
@@ -115,7 +115,7 @@ UTIL_Grep_Blocks:
     LEA     s_UGrepBloFormPrompts,A1   ; ...address of prompt pointer array...
     LEA     z_UGrepBloFormInitVals,A2  ; ...address of initial values array...
     LEA     z_UGrepBloFormBounds,A3  ; ...and address of bounds array
-    BSR     FORM                     ; Launch the form
+    JSR     FORM                     ; Launch the form
     ; Back from form, did user want to cancel?
     TST.B   zFormIntent              ; Did the user cancel?
     BEQ     .rt                      ; Yes, jump ahead to quit
@@ -149,7 +149,7 @@ UTIL_Grep_Blocks:
     BLO.S   .iv                      ;   No, proceed
     CLR.L   D1                       ;   Yes, loop around to the first block
 .iv MOVE.L  D1,z_UGrepBloFormInitVals  ; Copy new block to initial field values
-    BSR     QUITPOLL                 ;   Did the user press the 'q' key?
+    JSR     QUITPOLL                 ;   Did the user press the 'q' key?
     BEQ.S   .qt                      ;   If so, jump ahead to exit
     CMP.L   z_UGrepStartPos,D1       ;   Are we back at the start of the search?
     BNE     .lp                      ;   No, continue search in the new block
@@ -216,7 +216,7 @@ _UGrep_FORM:
     LEA     s_UGrepFormLenPrompts,A1   ; ...address of prompt pointer array...
     LEA     z_UGrepFormLenInitVals,A2  ; ...addr of initial values array...
     LEA     d_UGrepSecFormLenBounds,A3   ; ...and you can't have >16 bytes
-    BSR     FORM                     ; Launch the form
+    JSR     FORM                     ; Launch the form
     ; Back from form, did user want to cancel?
     TST.B   zFormIntent              ; Did the user cancel?
     BEQ     .rt                      ; Yes, jump ahead to quit
@@ -282,7 +282,7 @@ _UGrep_FORM:
     LEA     z_UGrepFormPatInitVals,A2  ; ...addr of initial values array...
     SUBA.L  A3,A3                    ; ...and search patterns are unbounded
     ; Copy user options into defaults
-    BSR     FORM                     ; Launch the form
+    JSR     FORM                     ; Launch the form
     ; Back from form, did user want to cancel?
     TST.B   zFormIntent              ; Did the user cancel?
     BEQ     .rt                      ; Yes, jump ahead to quit
@@ -351,7 +351,7 @@ _UGrepSec_DIAGREAD:
     CLR.W   zWIOWriteLen             ; Diag_Read command writes no data
     LEA     s_UGrepSecDiagRead,A0    ; Location of command template
     MOVE.B  #2,D0                    ; This command is two bytes long
-    BSR     WIDGETCMD                ; Construct actual command in RAM
+    JSR     WIDGETCMD                ; Construct actual command in RAM
     BSR     WIDGETIO                 ; Issue command
     BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
     TST.B   zWIOError                ; Did the read command go ok?
@@ -371,7 +371,7 @@ _UGrepSec_SENDSEEK:
     MOVE.L  D1,(2+z_UGrepSecSendSeekCmd)   ; Inject seek address into command
     LEA     z_UGrepSecSendSeekCmd,A0   ; Location of command template
     MOVE.B  #6,D0                    ; This command is six bytes long
-    BSR     WIDGETCMD                ; Construct actual command in RAM
+    JSR     WIDGETCMD                ; Construct actual command in RAM
     BSR     WIDGETIO                 ; Issue command
     RTS                              ; Back to caller
 
@@ -418,7 +418,7 @@ _UGrepBlo_PROREAD:
     MOVE.W  zBlockSize,zWIOReadLen   ; Read a whole block from the Widget
     MOVE.L  #zSectorTag,zWIOReadPtr  ; Read into this memory location
     CLR.W   zWIOWriteLen             ; ProFile_Read command writes no data
-    BSR     WIDGETIO                 ; Issue command
+    JSR     WIDGETIO                 ; Issue command
     BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
     TST.B   zWIOError                ; Did the read command go ok?
     RTS                              ; Back to caller
