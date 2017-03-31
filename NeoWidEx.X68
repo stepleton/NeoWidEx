@@ -64,8 +64,12 @@ NEOWIDEX:
     ; Notes:
     ;   (none)
 _THANKS:
+    ADDQ.B  #1,zIterations
+    BTST.B  #2,zIterations
+    BNE.S   .fa
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
     RTS
+.fa JMP     FA1D
 
     ; _NOTYET -- Placeholder for as-yet unimplemented code
     ; Args:
@@ -126,6 +130,8 @@ _NOTYET:
 
     INCLUDE NeoWidEx_UTILITIES.X68
 
+    INCLUDE NeoWidEx_FA1D.X68
+
     PAGE
 * NeoWidEx numerical data ==================================
     SECTION kSecData
@@ -169,6 +175,9 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     PAGE
 * NeoWidEx scratch data allocation =========================
     SECTION kSecScratch
+
+zIterations:
+    DC.B    $FF
 
 
     PAGE
@@ -232,6 +241,7 @@ zSectorData:
 
     ; Designates NEOWIDEX as the beginning of the program.
     END    NEOWIDEX
+
 
 
 *~Font name~Courier New~
