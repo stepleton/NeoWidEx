@@ -33,6 +33,8 @@ UTILITIES:
 
     INCLUDE NeoWidEx_UTIL_Track_Offsets.X68
 
+    INCLUDE NeoWidEx_UTIL_Addressing.X68
+
     PAGE
 * NeoWidEx assorted utilities numerical data ===============
     SECTION kSecData
@@ -45,12 +47,8 @@ dUtilitiesMenuHandlers:              ; Addresses of handlers for each of the...
     DC.L    UTIL_Exercise_Disk       ; ...will be cleared before the call
     DC.L    UTIL_Track_Offsets
     DC.L    _NOTYET
+    DC.L    (1+UTIL_Addressing)
     DC.L    $00000000                ; Null terminator
-
-
-    PAGE
-* NeoWidEx assorted utilities scratch data allocation ======
-    SECTION kSecScratch
 
 
     PAGE
@@ -65,8 +63,10 @@ sUtilitiesMenu:
     DC.B    'EXERCISE DISK 4',0
     DC.B    'TRACK OFFSETS 5',0
     DC.B    'FORMAT        6',0
+    DC.B    'ADDRESSING... 7',0
     DC.B    0                        ; End of menu
     DC.B    $01                      ; Divider after item 1
+    DC.B    $06                      ; Divider after item 6
     DC.B    0                        ; No more dividers
 
 

@@ -268,7 +268,7 @@ STATUSPRINT:
     ; Notes:
     ;   Runs WIDGETINFO if it hasn't been run yet, and in that case, has all
     ;       of WIDGETINFO's side effects. If WIDGETINFO has been run, then
-    ;       only D0-D2/A0-A2 will be trashed.
+    ;       "only" D0-D4/A0-A3 will be trashed.
 SPAREPRINT:
     BSR     WINFOMAYBE               ; Run WIDGETINFO if needed
     mResetP                          ; Reset paging (only needed for Widget)
@@ -546,6 +546,11 @@ SPAREPRINTWI:
     PAGE
 * NeoWidEx WIDGETINFO scratch data allocation ===============
     SECTION kSecScratch
+
+    ; IMPORTANT: With the exceptions of zFmtOffset, zFmtIntrl, zSparesInUse, and
+    ; zBadBlocks, cached drive information in this file should be *fixed*
+    ; information---unchangeable parameters like disk geometry and ROM version,
+    ; not variable parameters like the interleave map.
 
     ; Have we run WIDGETINFO? $00 if not, anything else otherwise.
 zHaveInfo:

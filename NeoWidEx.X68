@@ -21,11 +21,11 @@
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $A800                    ; Various numerical data items live here
+    ORG     $B400                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $AC00                    ; Structured scratch space
+    ORG     $B800                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $B000                    ; Program strings bring up the rear
+    ORG     $BC00                    ; Program strings bring up the rear
     SECTION kSecCode
 
 
