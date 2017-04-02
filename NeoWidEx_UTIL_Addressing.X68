@@ -357,8 +357,8 @@ _UAddr_LoadIlMap_nobanner:
     ; Copy Widgety size and geometry information locally.
 .go MOVE.L  zNumBlocks,z_UAddrNumBlocks
     MOVE.W  zCylinders,z_UAddrCylinders
-    MOVE.W  zHeads,z_UAddrHeads
-    MOVE.W  zSectors,z_UAddrSectors
+    MOVE.B  zHeads,z_UAddrHeads
+    MOVE.B  zSectors,z_UAddrSectors
 
     ; Attempt to load spare table.
     MOVE.L  #$00FFFFFE,D1            ; Sector ID for the Widget spare table
@@ -371,7 +371,7 @@ _UAddr_LoadIlMap_nobanner:
     ; Find and validate interleave map information. We use a crummy N^2
     ; algorithm to make sure the map contains only one of each number in
     ; 0..zSectors-1, but zSectors is never large, so it shouldn't matter much.
-.pr MOVEA.L #($1C0+zSectorTag),A0    ; Interleave map address to A0
+.pr MOVEA.L #($1C6+zSectorTag),A0    ; Interleave map address to A0
     ; In these nesting loops, D0 will be the entry we're looking for in the map,
     ; and D1 will index the map itself.
     CLR.W   D0                       ; Prepare D0 word to hold:
