@@ -263,7 +263,7 @@ sStateRegistersBitmap:
     DC.B    '                -BYTE 2-',$0D
     DC.B    '    DISK RD-WR DIR IS READ-n                     -BYTE 3-',$0D
     DC.B    'SERVO CAN ACCEPT A COMMAND-m          NO CRC ERROR DETECTED-f',$0D
-    DC.B    '            MSEL1-l  MSEL2-k                WRITE NOT VALID-e',$0D
+    DC.B    '            MSEL1-l  MSEL2-k            NOT WRITE-NOT-VALID-e',$0D
     DC.B    '              BSY-j    CMD-i                    SERVO READY-d',$0D
     DC.B    '     NO ECC ERROR DETECTED-h                    SERVO ERROR-c',$0D
     DC.B    '  STATE MACHINE IS RUNNING-g            STATE MACHINE STATE-',0

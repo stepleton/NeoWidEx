@@ -190,7 +190,7 @@ CMD_Read_Servo_Status:
     ; Notes:
     ;   Trashes D0.
 PRINTSERVOOFFSETDAC:
-    BTST.L  #$02,D0                  ; What's the value's sign?
+    BTST.L  #$05,D0                  ; What's the value's sign?
     BNE.S   .ps                      ; Positive; skip ahead
     mPrtLit kCrtRow,kCrtCol,#kFirstCol,noexport,<'-'>  ; Negative; print '-'
 .ps ADDQ.W  #1,kCrtCol               ; Advance cursor one pos (note noexp above)

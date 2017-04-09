@@ -53,7 +53,7 @@ CMD_Format_Track:
     BEQ     .qt                      ; Yes, go ahead to ack user and cancel
 
     ; Copy parameters into the command and get confirmation
-.bc MOVE.B  (3+zFieldValues),(2+zFrmtTrakCmd)  ; Copy format offset into command
+    MOVE.B  (3+zFieldValues),(2+zFrmtTrakCmd)  ; Copy format offset into command
     MOVE.B  (7+zFieldValues),(3+zFrmtTrakCmd)  ; Copy interleave set into cmd.
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'RAW COMMAND'>
     LEA     zFrmtTrakCmd,A0          ; Get ready to dump the command

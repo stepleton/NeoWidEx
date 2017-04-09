@@ -33,6 +33,8 @@ UTILITIES:
 
     INCLUDE NeoWidEx_UTIL_Track_Offsets.X68
 
+    INCLUDE NeoWidEx_UTIL_Format.X68
+
     INCLUDE NeoWidEx_UTIL_Addressing.X68
 
     PAGE
@@ -46,7 +48,7 @@ dUtilitiesMenuHandlers:              ; Addresses of handlers for each of the...
     DC.L    UTIL_Grep_Blocks         ; ...calling this handler; the LSBit...
     DC.L    UTIL_Exercise_Disk       ; ...will be cleared before the call
     DC.L    UTIL_Track_Offsets
-    DC.L    _NOTYET
+    DC.L    UTIL_Format
     DC.L    (1+UTIL_Addressing)
     DC.L    $00000000                ; Null terminator
 

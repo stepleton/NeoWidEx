@@ -18,14 +18,17 @@
     PAGE
 * NeoWidEx section definitions =============================
 
+    ; For faster loading from floppy, these sections are fairly tightly packed.
+    ; If you add more code or strings, you may need to allocate more space.
+
     SECTION kSecCode
     ORG     $800                     ; Program code starts here
     SECTION kSecData
-    ORG     $B400                    ; Various numerical data items live here
+    ORG     $C200                    ; Various numerical data items live here
     SECTION kSecScratch
-    ORG     $B800                    ; Structured scratch space
+    ORG     $C500                    ; Structured scratch space
     SECTION kSecStrings
-    ORG     $BC00                    ; Program strings bring up the rear
+    ORG     $C900                    ; Program strings bring up the rear
     SECTION kSecCode
 
 
@@ -152,8 +155,8 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     DC.L    CMD_Set_Recovery
     DC.L    CMD_ProFile_Read
     DC.L    CMD_ProFile_Write
-    DC.L    CMD_Sys_Read
-    DC.L    _NOTYET
+    DC.L    _NOTYET                  ; CMD_Sys_Read, once it's perfected
+    DC.L    _NOTYET                  ; CMD_Sys_Write, once it's implemented
     DC.L    CMD_Send_Restore
     DC.L    CMD_Send_Seek
     DC.L    CMD_Set_AutoOffset

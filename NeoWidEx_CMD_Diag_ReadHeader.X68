@@ -105,8 +105,12 @@ CMD_Diag_ReadHeader:
     BSR     WIDGETPERROR             ; Error! Print error message
     BRA     .ss                      ; Skip ahead to get standard status
 
-    ; Examine read exception register for errors
-.rx CMPI.W  #$2000,kStdStatus        ; A nominal read has register value $2000
+    ; Examine read exception register for errors. NOTE: The claim that a nominal
+    ; result leaves $0000 in the first word of the exception register is mostly
+    ; an empirical claim, but after looking at the ROM code on bitsavers, I
+    ; don't see how Diag_ReadHeader would set the usual "at least one successful
+    ; read" bit (yielding $2000). It might be too low-level for that.
+.rx CMPI.W  #$0000,kStdStatus        ; A nominal result has register value $0000
     BEQ     .ss                      ; Looks good, skip ahead to get std. status
     MOVE.W  kStdStatus,-(A7)         ; Error! Read-exception register onto stack
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_CDiagReadHdrExceptionErr

@@ -308,16 +308,21 @@ _UTrakOfstCheckTrack:
     ;       ATF.
     ;   Trashes D0/A0.
 _UTrakOfstPrintDac:
-    ; Force servo into auto-offset mode
+    ; Force servo into auto-offset mode. We do this three times to give the
+    ; servo a chance to settle. Not sure if this is really necessary...
     MOVE.B  #2,D0                    ; This command is two bytes long
     LEA     s_UTrakOfstCmdSetAutoOffset,A0   ; RAM location of command template
     JSR     WIDGETCMD                ; Construct actual command in RAM
     CLR.W   zWIOReadLen              ; There are no bytes to read
     CLR.W   zWIOWriteLen             ; There are no bytes to write
     JSR     WIDGETIO                 ; Issue command
+    BNE.S   .no                      ; Command failed; print error and exit
+    JSR     WIDGETIO                 ; Issue command
+    BNE.S   .no                      ; Command failed; print error and exit
+    JSR     WIDGETIO                 ; Issue command
     BEQ.S   .gs                      ; Command sent successfuly, jump ahead
 
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'FAILED TO ORDER AUTOOFFSET.'>
+.no mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'FAILED TO ORDER AUTOOFFSET.'>
     JSR     WIDGETPERROR             ; Print disk error string
     ANDI.B  #$FB,CCR                 ; Clear Z flag to mark failure
     RTS                              ; Back to caller

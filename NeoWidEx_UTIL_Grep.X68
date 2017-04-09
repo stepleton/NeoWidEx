@@ -84,7 +84,7 @@ UTIL_Grep_Sectors:
     BRA     .lp                      ;   Otherwise, search on in the new sector
 
 .dn MOVE.W  #kFirstCol,kCrtCol       ;   Rewind cursor to start of line
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DONE.                    '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'DONE.                       '>
 .rt RTS                              ; Back to caller
 
 .qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Yes, ack user
@@ -335,8 +335,8 @@ _UGrepSec_STATUSSEEK:
     CLR.W   zWIOWriteLen             ; Current seek addr command writes no data
     LEA     s_UGrepSecStatusSeek,A0  ; Command: get int status, curr seek pos
     MOVE.B  #3,D0                    ; This command is three bytes long
-    BSR     WIDGETCMD                ; Construct actual command in RAM
-    BSR     WIDGETIO                 ; Issue command
+    JSR     WIDGETCMD                ; Construct actual command in RAM
+    JSR     WIDGETIO                 ; Issue command
     RTS                              ; Back to caller
 
     ; _UGrepSec_DIAGREAD -- UTIL_Grep_Sectors helper: issue Diag_Read command
@@ -352,8 +352,8 @@ _UGrepSec_DIAGREAD:
     LEA     s_UGrepSecDiagRead,A0    ; Location of command template
     MOVE.B  #2,D0                    ; This command is two bytes long
     JSR     WIDGETCMD                ; Construct actual command in RAM
-    BSR     WIDGETIO                 ; Issue command
-    BSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
+    JSR     WIDGETIO                 ; Issue command
+    JSR     WINFOSTATUSCHECK         ; Force info refresh if spares have changed
     TST.B   zWIOError                ; Did the read command go ok?
     RTS                              ; Back to caller
 
@@ -372,7 +372,7 @@ _UGrepSec_SENDSEEK:
     LEA     z_UGrepSecSendSeekCmd,A0   ; Location of command template
     MOVE.B  #6,D0                    ; This command is six bytes long
     JSR     WIDGETCMD                ; Construct actual command in RAM
-    BSR     WIDGETIO                 ; Issue command
+    JSR     WIDGETIO                 ; Issue command
     RTS                              ; Back to caller
 
     ; _UGrepSec_NEXTSECTOR -- UTIL_Grep_Sectors helper: increment CHS address

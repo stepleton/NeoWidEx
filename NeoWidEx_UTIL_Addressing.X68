@@ -24,7 +24,7 @@
     ; Notes:
     ;   A "sub-UI" with its own menu and everything.
     ;   Probably destroys most registers; depends on what user chooses to do.
-    ;   Will not trash beyond D0-D5/A0-A4.
+    ;   Will not trash beyond D0-D6/A0-A4.
 UTIL_Addressing:
     mMenuUi #sUtilAddrMenu,#dUtilAddrMenuHandlers
     RTS                              ; ...and go back to utilities menu
@@ -41,10 +41,17 @@ _UAddr_CopyPrintResult:
     MOVE.W  D2,z_UAddrPCylinder      ; Copy PCHS cylinder to memory
     MOVE.B  D3,z_UAddrPHead          ; Copy PCHS head to memory
     MOVE.B  D5,z_UAddrPSector        ; Copy LCHS sector to memory
+    MOVE.B  D6,z_UAddrSpareIndex     ; Copy spare index to memory
 _UAddr_PrintResult:
-    MOVE.L  z_UAddrLba,-(A7)         ; LBA to stack for printing
+    CMPI.B  #$FF,z_UAddrSpareIndex   ; Was last physical block a spare?
+    BEQ     .lb                      ; No, skip ahead
+    MOVE.B  z_UAddrSpareIndex,-(A7)  ; Yes, print which one it was
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'PHYSICAL BLOCK BELONGS TO SPARE '>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,hhx,<'. NO CORRESPONDING LBA.'>
+    BRA     .pb                      ; Skip printing LBA
+.lb MOVE.L  z_UAddrLba,-(A7)         ; LBA to stack for printing
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  LOGICAL BLOCK ADDRESS-'>,3x
-    MOVE.L  z_UAddrPba,-(A7)         ; PBA to stack for printing
+.pb MOVE.L  z_UAddrPba,-(A7)         ; PBA to stack for printing
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,' PHYSICAL BLOCK ADDRESS-'>,3x
     MOVE.B  z_UAddrLSector,-(A7)
     MOVE.B  z_UAddrLHead,-(A7)
@@ -80,9 +87,10 @@ _UAddr_FromLba:
     BEQ     _UAddr_Nevermind         ; Yes, jump to common quit code
 
     MOVE.L  zFieldValues,D0          ; Copy user input to D0
-    BSR     _UAddr_LbaToPba          ; Compute LBA into PBA in D1
+    BSR     _UAddr_LbaToPba          ; Compute LBA to PBA in D1
     BSR     _UAddr_PbaToLchs         ; Compute PBA to LCHS in D2-D4
     BSR     _UAddr_LsToPs            ; Compute LSector to PSector in D5
+    BSR     _UAddr_PbaToSpare        ; Compute spare index (or none) in D6
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
@@ -102,9 +110,10 @@ _UAddr_FromPba:
     BEQ     _UAddr_Nevermind         ; Yes, jump to common quit code
 
     MOVE.L  zFieldValues,D1          ; Copy user input to D1
-    BSR     _UAddr_PbaToLba          ; Copy PBA into LBA in D0
+    BSR     _UAddr_PbaToLba          ; Compute PBA to LBA in D0
     BSR     _UAddr_PbaToLchs         ; Compute PBA to LCHS in D2-D4
     BSR     _UAddr_LsToPs            ; Compute LSector to PSector in D5
+    BSR     _UAddr_PbaToSpare        ; Compute spare index (or none) in D6
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
@@ -127,8 +136,9 @@ _UAddr_FromLchs:
     MOVE.L  (4+zFieldValues),D3      ; Copy user input head to D3
     MOVE.L  (8+zFieldValues),D4      ; Copy user input sector to D4
     BSR     _UAddr_LchsToPba         ; Compute LCHS to PBA in D1
-    BSR     _UAddr_PbaToLba          ; Copy PBA into LBA in D0
+    BSR     _UAddr_PbaToLba          ; Compute PBA to LBA in D0
     BSR     _UAddr_LsToPs            ; Compute LSector to PSector in D5
+    BSR     _UAddr_PbaToSpare        ; Compute spare index (or none) in D6
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
@@ -152,7 +162,35 @@ _UAddr_FromPchs:
     MOVE.L  (8+zFieldValues),D5      ; Copy user input sector to D5
     BSR     _UAddr_PsToLs            ; Compute PSector to LSector in D4
     BSR     _UAddr_LchsToPba         ; Compute LCHS to PBA in D1
-    BSR     _UAddr_PbaToLba          ; Copy PBA into LBA in D0
+    BSR     _UAddr_PbaToLba          ; Compute PBA to LBA in D0
+    BSR     _UAddr_PbaToSpare        ; Compute spare index (or none) in D6
+    BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
+
+
+_UAddr_FromSpare:
+    MOVE.L  #s_UAddrBannerPrefix,-(A7)   ; Banner prefix on stack to print
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'SPARE INDEX ---'>
+    BSR     _UAddr_MaybeLoadIlMap_nobanr   ; Load interleave map if needed
+    BSR     _UAddr_FillBounds        ; Set form bounds for this drive
+
+    CMPI.B  #$FF,z_UAddrSpareIndex   ; Does initial value mean "no spare"?
+    BNE.S   .fm                      ; No, move along to the form
+    CLR.L   z_UAddrFormSprIdxInitVals  ; Yes, clear initial value
+
+.fm LEA     s_UAddrFormSprIdx,A0     ; Prepare FORM args; address of template...
+    LEA     s_UAddrFormSprIdxPrompts,A1  ; ...address of prompt pointer array...
+    LEA     z_UAddrFormSprIdxInitVals,A2   ; ...address of init. values array...
+    LEA     z_UAddrFormSprIdxBound,A3  ; ...and address of the bounds array
+    JSR     FORM                     ; Launch the form
+    ; Back from form, did user want to cancel?
+    TST.B   zFormIntent              ; Did the user cancel?
+    BEQ     _UAddr_Nevermind         ; Yes, jump to common quit code
+
+    MOVE.L  zFieldValues,D6          ; Copy user input to D6
+    BSR     _UAddr_SpareToPba        ; Compute spare index to PBA in D1
+    BSR     _UAddr_PbaToLba          ; Compute PBA to LBA in D0
+    BSR     _UAddr_PbaToLchs         ; Compute PBA to LCHS in D2-D4
+    BSR     _UAddr_LsToPs            ; Compute LSector to PSector in D5
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
@@ -283,6 +321,41 @@ _UAddr_PsToLs:
 .rt RTS                              ; Back to caller
 
 
+    ; _UAddr_PbaToSpare -- Convert physical block address to spare index
+    ; Args:
+    ;   D1: Physical block address
+    ; Notes:
+    ;   Byte 0 of D6 will contain the spare index if the LBA corresponds to a
+    ;       spare; otherwise it will contain $FF. Bytes 1-3 will be $00.
+    ;   Uncertain whether this calculation applies to Widget-20 or Widget-40.
+    ;   "Trashes" D6.
+_UAddr_PbaToSpare:
+    MOVE.L  D1,D6                    ; Copy PBA to D6
+    DIVU    #$100,D6                 ; Divide by 256
+    SWAP    D6                       ; D6 contains "next spare up":"remainder"
+    TST.W   D6                       ; Do we have any remainder?
+    BNE.S   .ns                      ; If so, jump ahead to say "not a spare"
+    SWAP    D6                       ; If not, D6 contains "next spare up"
+    SUBQ.B  #1,D6                    ; D6 now contains D1 block address's spare
+    RTS                              ; Back to caller
+.ns MOVE.L  #$FF,D6                  ; Not a spare, so D6 gets $FF
+    RTS                              ; Back to caller
+
+
+    ; _UAddr_SpareToPba -- Convert spare index to physical block address
+    ; Args:
+    ;   D6: Spare index, as word
+    ; Notes:
+    ;   D1 will contain the physical block address.
+    ;   Uncertain whether this calculation applies to Widget-20 or Widget-40.
+    ;   "Trashes" D1.
+_UAddr_SpareToPba:
+    MOVE.W  D6,D1                    ; Copy spare index to D1
+    ADDQ.W  #1,D1                    ; Add 1
+    MULU    #$100,D1                 ; Multiply by 256
+    RTS                              ; That's it; back to caller
+
+
     ; _UAddr_FillBounds -- Fill form bounds based on Widget parameters
     ; Args:
     ;   (none)
@@ -311,6 +384,10 @@ _UAddr_FillBounds:
     MOVE.B  z_UAddrSectors,D0        ; ...getting the number of sectors
     SUBQ.B  #1,D0                    ; Less one for upper bound
     MOVE.L  D0,(8+z_UAddrFormChsBounds)  ; Copy into bound storage
+
+    MOVE.B  z_UAddrSpares,D0         ; ...getting the number of spares
+    SUBQ.B  #1,D0                    ; Less one for the upper bound
+    MOVE.L  D0,z_UAddrFormSprIdxBound    ; Copy into bound storage
 
     RTS                              ; Back to caller
 
@@ -359,6 +436,7 @@ _UAddr_LoadIlMap_nobanner:
     MOVE.W  zCylinders,z_UAddrCylinders
     MOVE.B  zHeads,z_UAddrHeads
     MOVE.B  zSectors,z_UAddrSectors
+    MOVE.B  zSpares,z_UAddrSpares
 
     ; Attempt to load spare table.
     MOVE.L  #$00FFFFFE,D1            ; Sector ID for the Widget spare table
@@ -409,6 +487,7 @@ dUtilAddrMenuHandlers:               ; Addresses of handlers for each of the...
     DC.L    _UAddr_FromPba           ; ...calling this handler; the LSBit...
     DC.L    _UAddr_FromLchs          ; ...will be cleared before the call
     DC.L    _UAddr_FromPchs
+    DC.L    _UAddr_FromSpare
     DC.L    SPAREPRINT
     DC.L    _UAddr_LoadIlMap
     DC.L    $00000000                ; Null terminator
@@ -435,9 +514,11 @@ z_UAddrFormLbaBound:                 ; Form bound for logical block addresses
 z_UAddrFormPbaBound:                 ; Form bound for physical block addresses
     DC.L    $00000000
 z_UAddrFormChsBounds:                ; Form bounds for both kinds of CHS addr.s
-    DC.L    $00000000                ; Cylinder
-    DC.L    $00000000                ; Head
-    DC.L    $00000000                ; Sector
+    DC.L    $00000000                ;   Cylinder
+    DC.L    $00000000                ;   Head
+    DC.L    $00000000                ;   Sector
+z_UAddrFormSprIdxBound:              ; Form bounds for spare indices
+    DC.L    $00000000
 
     ; The following locations do double-duty as initial values for forms
     ; and as storage for entered/computed address data. Recall that form values
@@ -473,10 +554,19 @@ z_UAddrPHead:                        ; Last computed physical head
 z_UAddrPSector:                      ; Last compued physical sector
     DC.B    $00
 
-    ; We keep local copies of the drive size and the cylinder/head/sector
-    ; geometry---this allows us to do calculations for a 10MB Widget on machines
-    ; that have no Widget at all. On machines that do have Widgets, the real
-    ; values will be copied here.
+    ; Was the last computed physical block a spare? If not, the followng byte
+    ; will have value $FF; otherwise, it lists which spare index the last
+    ; computed physical block corresponded to
+
+z_UAddrFormSprIdxInitVals:
+    DC.B    $00,$00,$00              ; Longword padding bytes for:
+z_UAddrSpareIndex:                   ; Last computed spare index
+    DC.B    $FF
+
+    ; We keep local copies of the drive size, cylinder/head/sector geometry, and
+    ; number of spares---this allows us to do calculations for a 10MB Widget on
+    ; machines that have no Widget at all. On machines that do have Widgets, the
+    ; real values will be copied here.
 
 z_UAddrNumBlocks:
     DC.L    $4C00
@@ -486,6 +576,9 @@ z_UAddrHeads:
     DC.B    $02
 z_UAddrSectors:
     DC.B    $13
+z_UAddrSpares:
+    DC.B    $4C
+
 
     PAGE
 * NeoWidEx Addressing utility strings =======================
@@ -498,11 +591,12 @@ sUtilAddrMenu:
     DC.B    'FROM PHYS.BA  3',0
     DC.B    'FROM LOG.CHS  4',0
     DC.B    'FROM PHYS.CHS 5',0
-    DC.B    'SPARE TABLE   6',0
-    DC.B    'RELOAD IL MAP 7',0
+    DC.B    'FROM SPARE    6',0
+    DC.B    'SPARE TABLE   7',0
+    DC.B    'RELOAD IL MAP 8',0
     DC.B    0                        ; End of menu
     DC.B    $01                      ; Divider after item 1
-    DC.B    $05                      ; Divider after item 5
+    DC.B    $06                      ; Divider after item 5
     DC.B    0                        ; No more dividers
 
 s_UAddrBannerPrefix:
@@ -539,6 +633,14 @@ s_UAddrFormChsPrompts:
 .p1 DC.B    'CYLINDER',0
 .p2 DC.B    'HEAD',0
 .p3 DC.B    'SECTOR',0
+
+s_UAddrFormSprIdx:
+    DC.B    $0D,'FROM SPARE INDEX-aa'
+
+    DS.W    0
+s_UAddrFormSprIdxPrompts:
+    DC.L    .p1
+.p1 DC.B    'SPARE INDEX',0
 
 
 ** (Back to the code section) **

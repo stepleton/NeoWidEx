@@ -20,12 +20,12 @@
     ; Args:
     ;   (none)
     ; Notes:
-    ;   Trashes D0/A0.
+    ;   Trashes D0-D1/A0.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 CMD_Soft_Reset:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
-    CLR.B   zHaveInfo                ; Resetting? May as well refresh our info
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SOFT RESET ---'>
+    CLR.B   zHaveInfo                ; Resetting? May as well refresh our info
     MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdSoftReset,A0         ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
@@ -33,6 +33,18 @@ CMD_Soft_Reset:
     CLR.W   zWIOWriteLen             ; There are no bytes to write
     BSR     WIDGETIO                 ; Issue command
     BEQ     .ok                      ; All OK? Exit
+
+    ; It would be weird if it were OK, since the drive should be busy resetting
+    ; itself. So we poll it instead with successive requests for drive status.
+    MOVE.B  #3,D0                    ; The command is three bytes long
+    LEA     s_CmdSoftResetStdStatus,A0   ; Location of the cmd. template in RAM
+    BSR     WIDGETCMD                ; Construct the actual command in RAM
+    MOVE.W  #19,D1                   ; We'll try the command 20 times
+.lp BSR     WIDGETIO                 ; Issue command
+    BEQ     .ok                      ; All OK? Exit
+    DBEQ    D1,.lp                   ; Otherwise, try again...
+
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,sCmdSoftResetFail
     BSR     WIDGETPERROR             ; Error! Print error message
     RTS                              ; Back to caller
 .ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
@@ -45,7 +57,12 @@ CMD_Soft_Reset:
 
 sCmdSoftReset:
     DC.B    $10,$07                  ; Soft_Reset command (it's short!)
+s_CmdSoftResetStdStatus:
+    DC.B    $10,$01,$00              ; Command to request standard status
 
+sCmdSoftResetFail:
+    DC.B    $0D,'FAILED TO COMMUNICATE WITH DRIVE AFTER RESET. ATTEMPTED'
+    DC.B    $0D,'TO RETRIEVE STANDARD STATUS 20 TIMES. LAST ERROR--'
 
 ** (Back to the code section) **
     SECTION kSecCode

@@ -20,12 +20,12 @@
     ; Args:
     ;   (none)
     ; Notes:
-    ;   Trashes D0/A0.
+    ;   Trashes D0-D1/A0.
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 CMD_Scan:
     BSR     WIDGETCHECK              ; Is this a Widget? If not, bail
-    CLR.B   zHaveInfo                ; Scan can make spares; force info refresh
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  --- SCAN ---'>
+    CLR.B   zHaveInfo                ; Scan can make spares; force info refresh
     MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdScan,A0              ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
@@ -33,6 +33,18 @@ CMD_Scan:
     CLR.W   zWIOWriteLen             ; There are no bytes to write
     BSR     WIDGETIO                 ; Issue command
     BEQ     .ok                      ; All OK? Exit
+
+    ; It would be weird if it were OK, since the drive should be busy scanning
+    ; itself. So we poll it instead with successive requests for drive status.
+    MOVE.B  #3,D0                    ; The command is three bytes long
+    LEA     s_CmdScanStdStatus,A0    ; Location of the cmd. template in RAM
+    BSR     WIDGETCMD                ; Construct the actual command in RAM
+    MOVE.W  #19,D1                   ; We'll try the command 20 times
+.lp BSR     WIDGETIO                 ; Issue command
+    BEQ     .ok                      ; All OK? Exit
+    DBEQ    D1,.lp                   ; Otherwise, try again...
+
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,sCmdScanFail
     BSR     WIDGETPERROR             ; Error! Print error message
     RTS                              ; Back to caller
 .ok mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'DONE.'>
@@ -45,7 +57,12 @@ CMD_Scan:
 
 sCmdScan:
     DC.B    $10,$13                  ; Scan command (it's short!)
+s_CmdScanStdStatus:
+    DC.B    $10,$01,$00              ; Command to request standard status
 
+sCmdScanFail:
+    DC.B    $0D,'FAILED TO COMMUNICATE WITH DRIVE AFTER SCAN. ATTEMPTED'
+    DC.B    $0D,'TO RETRIEVE STANDARD STATUS 20 TIMES. LAST ERROR--'
 
 ** (Back to the code section) **
     SECTION kSecCode
