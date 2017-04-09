@@ -32,7 +32,7 @@ You can get started right away with NeoWidEx if you have:
 - A Lisa 2 with ROM version H.
 
 If you're missing any of these things but wish to use NeoWidEx anyway, refer to
-the "System requirements" section in MANUAL.md.
+the "System requirements" section in [MANUAL.md](MANUAL.md).
 
 The [LisaEm](http://lisa.sunder.net) emulator will run NeoWidEx, although
 because LisaEm does not emulate a Widget, many options will be unavailable.
