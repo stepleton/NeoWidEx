@@ -31,29 +31,31 @@ You can get started right away with NeoWidEx if you have:
   http://www.bigmessowires.com/floppy-emu/)).
 - A Lisa 2 with ROM version H.
 
-If you're missing any of these things but wish to use NeoWidEx anyway, refer to
-the "System requirements" section in MANUAL.md.
+#### Details
 
-The [LisaEm](http://lisa.sunder.net) emulator will run NeoWidEx, although
-because LisaEm does not emulate a Widget, many options will be unavailable.
+**Floppy drive:** Ordinary realisations of NeoWidEx will be loaded into RAM
+from a floppy disk (or from a floppy drive emulator like Floppy Emu). Other
+methods of starting NeoWidEx may be possible but have not been attempted.
+NeoWidEx expects the Lisa's memory to be configured [as the Boot ROM arranges
+it on startup](https://github.com/stpltn/bootloader#operational-description),
+and NeoWidEx itself should be loaded into a contiguous memory region starting
+at address $000800. NeoWidEx's code is not relocatable.
 
-## Other notes
+**ROM version H:** NeoWidEx performs some tasks by calling unpublished routines
+in the Lisa's boot ROM. For this reason, a NeoWidEx built for one boot ROM
+version will not work in a Lisa with a different boot ROM. At present. NeoWidEx
+is developed on a Lisa with boot ROM version H, and the disk image available on
+Github is ROM H specific.
 
-NeoWidEx is released into the public domain. Nobody owns NeoWidEx.
+If you know where to find the ROM routines NeoWidEx uses in a different ROM
+version, and you know these ROM routines work the same way that their ROM H
+counterparts do, all you'll need to do to make a custom NeoWidEx for your
+ROM is
 
-NeoWidEx is named after **Widex**, an Apple-internal Widget utility developed
-when the disks were new. No copies of this software are readily available today,
-but some usage notes have been archived [on Bitsavers](
-http://bitsavers.trailing-edge.com/pdf/apple/disk/widget/Widex_May84.pdf).
-
-Other "Widex-like" low-level tools exist. The [Basic Lisa Utility](
-http://sigmasevensystems.com/BLU.html) provides many useful functions for
-working with Lisa disks, but provides no direct access to Widget-specific
-features. [UsbWidEx](http://john.ccac.rwth-aachen.de:8000/patrick/UsbWidEx.htm)
-is a hardware peripheral that can do everything that NeoWidEx can and much
-more---without the Lisa.
-
-NeoWidEx is written in around 10,000 lines of 68000 macro assembly.
+- change the `kBootRom` constant in [`NeoWidEx_DEFS.X68`](
+  NeoWidEx_DEFS.X68).
+- supply the addresses in a ROM-specific section of the same file (copy the
+  idiom found within the `IFEQ (kBootRom-'H')` conditional.
 
 ## Acknowledgements
 
@@ -71,5 +73,3 @@ people and resources:
   and Ray Arachelian.
 - The entire [LisaList](https://groups.google.com/forum/#!forum/lisalist)
   community.
-
--- _[Tom Stepleton](stepleton@gmail.com), 10 April 2017, London_
