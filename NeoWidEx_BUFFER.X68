@@ -1,7 +1,6 @@
 *-----------------------------------------------------------
-* Title      : NeoWidEx
+* Title      : NeoWidEx_BUFFER
 * Written by : Tom Stepleton
-* Date       : XX January 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by

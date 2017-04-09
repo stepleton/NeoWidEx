@@ -1,7 +1,6 @@
 *-----------------------------------------------------------
 * Title      : NeoWidEx_CMD_Read_Abort_Status
 * Written by : Tom Stepleton
-* Date       : 26 March 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by

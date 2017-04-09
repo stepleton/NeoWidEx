@@ -1,7 +1,6 @@
 *-----------------------------------------------------------
 * Title      : NeoWidEx_CMD_Read_Controller_Status
 * Written by : Tom Stepleton
-* Date       : XX November 2016
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by

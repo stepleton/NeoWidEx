@@ -1,7 +1,6 @@
 *-----------------------------------------------------------
 * Title      : NeoWidEx_WIDGETINFO
 * Written by : Tom Stepleton
-* Date       : 08 November 2016
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by

@@ -1,7 +1,6 @@
 *-----------------------------------------------------------
-* Title      : NeoWidEx_CMD_Track_Offsets
+* Title      : NeoWidEx_UTIL_Track_Offsets
 * Written by : Tom Stepleton
-* Date       : 16 March 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by

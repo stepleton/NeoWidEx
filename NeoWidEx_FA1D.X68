@@ -1,7 +1,6 @@
 *-----------------------------------------------------------
 * Title      : NeoWidEx_FA1D
 * Written by : Tom Stepleton
-* Date       : 29 March 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by

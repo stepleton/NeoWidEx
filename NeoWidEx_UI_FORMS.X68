@@ -1,7 +1,6 @@
 *-----------------------------------------------------------
-* Title      : NeoWidEx_UI
+* Title      : NeoWidEx_UI_FORMS
 * Written by : Tom Stepleton
-* Date       : 1 January 2017
 * Description:
 *   Formatting and diagnostic tool for Widget drives,
 *   inspired by the WidEx utility internal to Apple, and by
