@@ -57,6 +57,30 @@ ROM is
 - supply the addresses in a ROM-specific section of the same file (copy the
   idiom found within the `IFEQ (kBootRom-'H')` conditional.
 
+## Forms
+
+NeoWidEx uses forms to obtain numerical input from the user. A form is one or
+more lines of text that look like this:
+
+```
+SEEK TO CYLINDER-⍰⍰⍰⍰ HEAD-01 SECTOR-0C
+```
+
+At any time when a form is active, the user may change the value for the field
+marked with inverted question mark characters (drawn as `⍰` above).  The user
+edits this value in an input box above the output window, where the arrow keys,
+**Backspace**, and digits 0-9, A-F all work as expected. Typing **Tab** or
+**Return** commits the edited value to the field and moves to the next field,
+rotating back to the start after the end of the form is reached.
+
+Type **Clear** or **Z** to restore the value in the current field to the value
+it had when the form was initially presented.
+
+Type **Q** to abandon the form and cancel the operation currently underway.
+
+And finally, type **Enter** or **X** to submit the form and continue the
+operation in progress.
+
 ## Acknowledgements
 
 It would not have been possible for me to write NeoWidEx without the following
