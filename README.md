@@ -20,7 +20,8 @@ what these commands do.
 
 The documentation that comes with NeoWidEx will not give you this knowledge on
 its own. Get ready to use NeoWidEx by studying the [Widget ERS document](
-http://bitsavers.trailing-edge.com/pdf/apple/disk/widget/Widget_ERS.pdf).
+http://bitsavers.trailing-edge.com/pdf/apple/disk/widget/Widget_ERS.pdf),
+particularly PDF pages 81-135.
 
 ## System requirements
 
@@ -35,3 +36,40 @@ the "System requirements" section in MANUAL.md.
 
 The [LisaEm](http://lisa.sunder.net) emulator will run NeoWidEx, although
 because LisaEm does not emulate a Widget, many options will be unavailable.
+
+## Other notes
+
+NeoWidEx is released into the public domain. Nobody owns NeoWidEx.
+
+NeoWidEx is named after **Widex**, an Apple-internal Widget utility developed
+when the disks were new. No copies of this software are readily available today,
+but some usage notes have been archived [on Bitsavers](
+http://bitsavers.trailing-edge.com/pdf/apple/disk/widget/Widex_May84.pdf).
+
+Other "Widex-like" low-level tools exist. The [Basic Lisa Utility](
+http://sigmasevensystems.com/BLU.html) provides many useful functions for
+working with Lisa disks, but provides no direct access to Widget-specific
+features. [UsbWidEx](http://john.ccac.rwth-aachen.de:8000/patrick/UsbWidEx.htm)
+is a hardware peripheral that can do everything that NeoWidEx can and much
+more---without the Lisa.
+
+NeoWidEx is written in around 10,000 lines of 68000 macro assembly.
+
+## Acknowledgements
+
+It would not have been possible for me to write NeoWidEx without the following
+people and resources:
+
+- [Dr. Patrick Schäfer](http://john.ccac.rwth-aachen.de:8000/patrick/index.htm),  whose numerous contributions include disassembly and/or analysis of various
+  Widget ROMs, technical documentation from his various projects, and some
+  helpful emails.
+- [bitsavers.org](http://bitsavers.org)'s archived technical documentation.
+- The [LisaEm](http://lisa.sunder.net) emulator by Ray Arachelian.
+- The [Floppy Emu](http://www.bigmessowires.com/floppy-emu/) floppy drive
+  emulator.
+- The [BLU](http://sigmasevensystems.com/BLU.html) utility by James MacPhail
+  and Ray Arachelian.
+- The entire [LisaList](https://groups.google.com/forum/#!forum/lisalist)
+  community.
+
+-- _Tom Stepleton, 10 April 2017, London_
