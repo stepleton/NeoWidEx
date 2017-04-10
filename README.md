@@ -1,5 +1,7 @@
 # NeoWidEx
 
+![NeoWidEx screenshot](images/NeoWidEx.jpg "NeoWidEx initial display")
+
 NeoWidEx is a formatting and diagnostic utility for the Widget, a 10-megabyte
 hard drive that Apple Computer designed and manufactured the 1980s. It runs on
 the Apple Lisa 2/10 computer, the only computer Apple ever sold with a Widget
