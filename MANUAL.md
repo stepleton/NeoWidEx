@@ -80,7 +80,9 @@ If you are having trouble using NeoWidEx due to any of these issues, please
 
 ### Hexadecimal numbers
 
+:point_right:
 **All numbers displayed in NeoWidEx are hexadecimal numbers.**
+:point_left:
 
 ### Forms
 
@@ -183,19 +185,31 @@ commercially-sold Widgets.
 #### SET RECOVERY
 
 This option allows the user to enable or disable the Widget's **recovery**
-capability. With recovery enabled (the default), the Widget will attempt to
-compensate for certain errors encountered whilst carrying out a command: for
-example, if it fails to write data to a particular block, the Widget will save
-the data in one of the Widget's spare blocks instead. With recovery disabled,
-operations that encounter errors will abort without attempting any kind of
-work-around.
+capability (via the `Set_Recovery` command). With recovery enabled (the
+default), the Widget will attempt to compensate for certain errors encountered
+whilst carrying out a command: for example, if it fails to write data to a
+particular block, the Widget will save the data in one of the Widget's spare
+blocks instead. With recovery disabled, operations that encounter errors will
+abort without attempting any kind of work-around.
 
 Most serious diagnostic investigations will disable recovery to obtain more
 precise control over the behaviour and side-effects of Widget commands.
 
 #### :star: GENERIC READ
 
+NeoWidEx reads a user-specified block from the hard drive using the ProFile
+`Read` command. The data read from the drive will be read to the disk data
+buffer, which can be examined with the utilities available in the `BUFFER...`
+submenu.
+
+This command will not work on a Widget that has failed its self tests.
+
 #### :star: GENERIC WRITE
+
+NeoWidEx uses the ProFile `Write` command to write the contents of the disk
+data buffer to a user-specified block on the hard drive.
+
+This command will not work on a Widget that has failed its self tests.
 
 #### WIDGET READ
 
