@@ -33,6 +33,13 @@ You can get started right away with NeoWidEx if you have:
   http://www.bigmessowires.com/floppy-emu/)).
 - A Lisa 2 with ROM version H.
 
+NeoWidEx will run on a Lisa 2/5 (i.e. a Lisa 2 with a built-in external
+parallel port), but it will only be able to access drives attached to that
+port. Most NeoWidEx options will be unavailable unless that drive is a Widget.
+
+The [LisaEm](http://lisa.sunder.net) emulator will run NeoWidEx, although
+because LisaEm does not emulate a Widget, many options will be unavailable.
+
 #### Details
 
 **Floppy drive:** Ordinary realisations of NeoWidEx will be loaded into RAM
@@ -60,6 +67,16 @@ ROM is
   idiom found within the `IFEQ (kBootRom-'H')` conditional.
 
 ## User interface notes
+
+### Accessibility
+
+NeoWidEx has poor accessibility for people with certain kinds of visual
+impairments. Additionally, some people may have trouble reading the text
+NeoWidEx prints to the screen, which makes use of the capital-letters-only
+font in the Lisa's boot ROM. Other accessibility shortcomings may exist.
+
+If you are having trouble using NeoWidEx due to any of these issues, please
+[contact me via email](mailto:stepleton@gmail.com).
 
 ### Hexadecimal numbers
 
@@ -89,9 +106,104 @@ Type **Q** to abandon the form and cancel the operation currently underway.
 And finally, type **Enter** or **X** to submit the form and continue the
 operation in progress.
 
-## Menu options
+## Main menu options
 
-TODO
+![NeoWidEx main menu](images/MainMenu_0.3.jpg "NeoWidEx main menu display")
+
+The NeoWidEx main menu presents the following menu options. The ones marked with
+a star (:star:) are compatible with all Lisa parallel port hard drives.
+
+#### :star: LAST STATUS
+
+NeoWidEx presents the last **standard status** reported by the hard drive, along
+with a bit-by-bit explanation of what the status means.
+
+#### :star: BUFFER...
+
+This menu option leads to the [Buffer submenu](#buffer-submenu).
+
+#### :star: DRIVE INFO
+
+NeoWidEx reads block `$FFFFFF` from the drive, a "virtual block" that contains
+information about the drive's parameters (its "`Device_ID`" structure).
+NeoWidEx parses and presents this data.
+
+This command will not work on a Widget that has failed its self tests.
+
+#### :star: SPARE TABLE
+
+NeoWidEx reads block `$FFFFFE` from the drive, a "virtual block" that returns a
+data structure describing the drive's **spare table** (in Widget's case at
+least, this is the actual spare table data stored on disk). NeoWidEx parses and
+presents the information in this data structure.
+
+Within the LisaEm emulator, it is normal for NeoWidEx to observe that the
+bad block table ends with a suspicious `$000000` value instead of the
+expected `$FFFFFF`.
+
+This command will not work on a Widget that has failed its self tests.
+
+#### FULL STATUS
+
+NeoWidEx executes the `Read_Controller_Status` command repeatedly to recover
+all eight 32-bit controller status longwords from the Widget. It displays these
+longwords along with a bit-by-bit explanation of what the longwords mean. The
+first status longword is the standard status.
+
+#### SERVO STATUS
+
+NeoWidEx executes the `Read_Servo_Status` command repeatedly to recover all
+eight 32-bit status longwords from the servo. These longwords are requested in
+the reverse order of their identifying bytes, from `$08` to `$01`. This ensures
+that status information pertaining to the last command processed by the servo
+(servo status longword `$08`) won't simply refer to the commands executed to
+retrieve the other seven status longwords.
+
+NeoWidEx displays these longwords and attempts to show a bit-by-bit explanation
+of what they mean, but the semantics of the servo status information are not
+as well-documented or well-known as those of the controller status longwords.
+
+#### ABORT STATUS
+
+NeoWidEx executes the `Read_Abort_Status` command, whose result elaborates on
+the failure condition encountered by the Widget while carrying out the last
+command to be executed.  If there was no preceding failure condition (marked by
+the least significant bit of the standard status), then the returned
+information is not meaningful.
+
+NeoWidEx attempts to decode the abort status information based on Appendix C of
+the [Widget ERS document](
+http://bitsavers.trailing-edge.com/pdf/apple/disk/widget/Widget_ERS.pdf), which
+notes that the proper interpretation of this data is highly dependent on the
+Widget's firmware version. As the ERS document appears to describe an earlier
+firmware than what's available on my Widget, it's quite possible that
+NeoWidEx will not interpret abort status information correctly for most
+commercially-sold Widgets.
+
+#### SET RECOVERY
+
+This option allows the user to enable or disable the Widget's **recovery**
+capability. With recovery enabled (the default), the Widget will attempt to
+compensate for certain errors encountered whilst carrying out a command: for
+example, if it fails to write data to a particular block, the Widget will save
+the data in one of the Widget's spare blocks instead. With recovery disabled,
+operations that encounter errors will abort without attempting any kind of
+work-around.
+
+Most serious diagnostic investigations will disable recovery to obtain more
+precise control over the behaviour and side-effects of Widget commands.
+
+#### :star: GENERIC READ
+
+#### :star: GENERIC WRITE
+
+#### WIDGET READ
+
+#### WIDGET WRITE
+
+Diag-Write might benefit from engaging ATF
+
+Format might not issue a scan
 
 ## Acknowledgements
 
