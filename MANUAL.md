@@ -1,5 +1,7 @@
 # NeoWidEx
 
+![NeoWidEx screenshot](images/NeoWidEx.jpg "NeoWidEx initial display")
+
 NeoWidEx is a formatting and diagnostic utility for the Widget, a 10-megabyte
 hard drive that Apple Computer designed and manufactured the 1980s. It runs on
 the Apple Lisa 2/10 computer, the only computer Apple ever sold with a Widget
@@ -57,7 +59,13 @@ ROM is
 - supply the addresses in a ROM-specific section of the same file (copy the
   idiom found within the `IFEQ (kBootRom-'H')` conditional.
 
-## Forms
+## User interface notes
+
+### Hexadecimal numbers
+
+**All numbers displayed in NeoWidEx are hexadecimal numbers.**
+
+### Forms
 
 NeoWidEx uses forms to obtain numerical input from the user. A form is one or
 more lines of text that look like this:
@@ -80,6 +88,10 @@ Type **Q** to abandon the form and cancel the operation currently underway.
 
 And finally, type **Enter** or **X** to submit the form and continue the
 operation in progress.
+
+## Menu options
+
+TODO
 
 ## Acknowledgements
 
