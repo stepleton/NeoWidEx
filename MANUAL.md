@@ -72,11 +72,11 @@ ROM is
 
 NeoWidEx has poor accessibility for people with certain kinds of visual
 impairments. Additionally, some people may have trouble reading the text
-NeoWidEx prints to the screen, which makes use of the capital-letters-only
+NeoWidEx prints to the screen, since NeoWidEx uses the capital-letters-only
 font in the Lisa's boot ROM. Other accessibility shortcomings may exist.
 
-If you are having trouble using NeoWidEx due to any of these issues, please
-[contact me via email](mailto:stepleton@gmail.com).
+If you are having trouble using NeoWidEx due to any of its accessibility
+limitations, please [contact me via email](mailto:stepleton@gmail.com).
 
 ### Hexadecimal numbers
 
@@ -94,7 +94,7 @@ SEEK TO CYLINDER-⍰⍰⍰⍰ HEAD-01 SECTOR-0C
 ```
 
 At any time when a form is active, the user may change the value for the field
-marked with inverted question mark characters (drawn as `⍰` above).  The user
+marked with inverted question mark characters (drawn as `⍰` above). The user
 edits this value in an input box above the output window, where the arrow keys,
 **Backspace**, and digits 0-9, A-F all work as expected. Typing **Tab** or
 **Return** commits the edited value to the field and moves to the next field,
@@ -147,14 +147,14 @@ This command will not work on a Widget that has failed its self tests.
 
 #### FULL STATUS
 
-NeoWidEx executes the `Read_Controller_Status` command repeatedly to recover
+NeoWidEx issues the `Read_Controller_Status` command repeatedly to recover
 all eight 32-bit controller status longwords from the Widget. It displays these
 longwords along with a bit-by-bit explanation of what the longwords mean. The
 first status longword is the standard status.
 
 #### SERVO STATUS
 
-NeoWidEx executes the `Read_Servo_Status` command repeatedly to recover all
+NeoWidEx issues the `Read_Servo_Status` command repeatedly to recover all
 eight 32-bit status longwords from the servo. These longwords are requested in
 the reverse order of their identifying bytes, from `$08` to `$01`. This ensures
 that status information pertaining to the last command processed by the servo
@@ -167,9 +167,9 @@ as well-documented or well-known as those of the controller status longwords.
 
 #### ABORT STATUS
 
-NeoWidEx executes the `Read_Abort_Status` command, whose result elaborates on
+NeoWidEx issues the `Read_Abort_Status` command, whose result elaborates on
 the failure condition encountered by the Widget while carrying out the last
-command to be executed.  If there was no preceding failure condition (marked by
+command to be executed. If there was no preceding failure condition (marked by
 the least significant bit of the standard status), then the returned
 information is not meaningful.
 
@@ -213,11 +213,105 @@ This command will not work on a Widget that has failed its self tests.
 
 #### WIDGET READ
 
+:x: This option is not implemented yet :x:
+
+NeoWidEx reads a user-specified contiguous range of blocks from the Widget
+using the `Sys_Read` command. The data read from the drive will be read to the
+disk data buffer, which can be examined with the utilities available in the
+`BUFFER...` submenu.
+
+This command will not work on a Widget that has failed its self tests.
+
 #### WIDGET WRITE
 
-Diag-Write might benefit from engaging ATF
+:x: This option is not implemented yet :x:
+
+NeoWidEx uses the `Sys_Write` command to write multiple blocks' worth of data
+from the disk buffer to a user-specified contiguous range of blocks on
+the Widget.
+
+This command will not work on a Widget that has failed its self tests.
+
+#### SEND RESTORE
+
+This option uses the `Send_Restore` command to cause the Widget to perform
+a data or a format recalibration. This operation initialises the servo and
+moves the heads to a known location over the disk surface.
+
+#### SEEK
+
+NeoWidEx issues a `Send_Seek` command to move the Widget's heads to a
+user-specified cylinder, and to indicate that a particular head and sector
+may be used for a diagnostic read or write command to follow.
+
+#### AUTOOFFSET
+
+NeoWidEx issues the `Set_AutoOffset` command, which directs the Widget to
+fine-tune the location of the heads over the current track. (Widget has two
+mechanisms for head positioning: a coarse adjustment that employs an optical
+signal and a fine adjustment that uses an alignment signal stored present on
+the physical media itself. This second signal is the one used by the
+`Set_AutoOffset` command.)
+
+#### READ AT SEEK
+
+NeoWidEx issues the `Diag_Read` command, which directs the Widget to load data
+from the sector at the cylinder/head/sector address from the Widget's last
+seek. This option also allows the user to specify a new seek location before
+the read takes place.
+
+This option may be used to read data from any sector on the disk, including
+those used to store spare tables and spare blocks.
+
+The data read from the drive will be read to the disk data buffer, which can be
+examined with the utilities available in the `BUFFER...` submenu.
+
+#### WRITE AT SEEK
+
+NeoWidEx uses the `Diag_Write` command to write the contents of the disk
+data buffer to the sector at the cylinder/head/sector address from the Widget's
+last seek. This option also allows the user to specify a new seek location
+before the write takes place.
+
+This option may be used to write data to any sector on the disk, including
+those used to store spare tables and spare blocks.
+
+Ordinary writes to Widget engage the fine head positioning mechanism (see
+[AUTOOFFSET](#autooffset)) prior to committing data to the disk media.
+This NeoWidEx option does not perform this step, which means that data could
+be written slightly to the side of the centre of the disk track. If this is
+not desirable, consider first seeking via [SEEK](#seek), performing fine head
+positioning via [AUTOOFSET](#autooffset), _then_ using WRITE AT SEEK to
+modify data at the seek location.
+
+#### READ HEADER
+
+#### SCAN
+
+#### SOFT RESET
+
+#### RESET SERVO
+
+#### PARK HEADS
+
+#### INIT SPR TBL
+
+#### FORMAT TRACK
+
+#### UTILITIES...
 
 Format might not issue a scan
+
+#### QUIT
+
+#### THANKS
+
+Presents some acknowledgements text similar to the [acknowledgements section](
+#acknowledgements) of this document.
+
+Users are encouraged to revisit this command occasionally.
+
+Diag-Write might benefit from engaging ATF
 
 ## Acknowledgements
 
