@@ -40,22 +40,50 @@ CMD_Diag_Write:
 
     ; Back from form; did user want to cancel?
     TST.B   zFormIntent              ; Did the user cancel?
-    BNE.S   .ws                      ; No, see if the user wanted to seek
-    BRA     .qt                      ; Yes, go ahead to ack user and cancel
+    BEQ     .qt                      ; Yes, go ahead to ack user and cancel
 
     ; Did user want to seek first?
-.ws TST.B   (3+zFieldValues)         ; Check user want-to-seek response
-    BEQ.S   .cf                      ; Looks like no; skip ahead to confirm
+    TST.B   (3+zFieldValues)         ; Check user want-to-seek response
+    BEQ.S   .ao                      ; Looks like no; skip ahead to ATF query
     BSR     CMD_Send_Seek_nobanner   ; Yes; jump into seek code
 
     ; Did user give up while seeking?
     TST.B   zFormIntent              ; Did the user cancel?
-    BNE.S   .cf                      ; No, seek is now done, go confirm
+    BNE.S   .ao                      ; No, seek is done, ask if user wants ATF
     RTS                              ; Yes, back to caller
 
+    ; Whether the user did a seek or not, see if they want to do track centring.
+    ; This is important because the Widget prefers to write data only after a
+    ; fine track centring adjustment has taken place.
+.ao LEA     s_CDiagAutoOffsetForm,A0   ; Prepare FORM args: addr. of template...
+    LEA     s_CDiagAutoOffsetPrompts,A1  ; ...prompt pointer array address...
+    LEA     z_CDiagAutoOffsetInitVals,A2   ; ...initial values array addr....
+    SUBA.L  A3,A3                    ; ...and no value bounds specified
+    BSR     FORM                     ; Display form; get user input
+
+    ; Back from form; did user want to cancel?
+    TST.B   zFormIntent              ; Did the user cancel by typing 'Q'?
+    BEQ     .qt                      ; Yes, go ahead to ack user and cancel
+
+    ; Did the user want to engage the automatic track following mechanism?
+    MOVE.L  zFieldValues,z_CDiagAutoOffsetInitVals   ; Save answer as default...
+    BEQ.S   .cf                      ; ...and skip to confirmation if was no
+
+    ; Engage automatic track following.
+    MOVE.B  #2,D0                    ; The command is two bytes long
+    LEA     s_CDiagWriteAutoOffset,A0  ; Location of the command template in RAM
+    BSR     WIDGETCMD                ; Construct actual command in RAM
+    CLR.W   zWIOReadLen              ; No command in this file reads bytes
+    CLR.W   zWIOWriteLen             ; This command writes no bytes
+    BSR     WIDGETIO                 ; Issue command
+    TST.B   zWIOError                ; Did the auto offset command go ok?
+    BEQ.S   .cf                      ; Yes, skip to get final user confirmation
+    BSR     WIDGETPERROR             ; Error! Print error message
+    BRA     .qt                      ; Abandon operation here.
+
     ; Does the user really want to write?
-.cf LEA     s_CDiagReallyWriteForm,A0  ; Prep. FORM args: address of template...
-    LEA     s_CDiagReallyWritePrompts,A1   ; ...addr. of prompt pointer array...
+.cf LEA     s_CDiagWriteConfirmForm,A0   ; Prep. FORM args: addr. of template...
+    LEA     s_CDiagWriteConfirmPrompts,A1   ; ...prompt pointer array addr....
     SUBA.L  A2,A2                    ; ...no initial values specified...
     SUBA.L  A3,A3                    ; ...and no value bounds specified
     BSR     FORM                     ; Display form; get user input
@@ -66,7 +94,7 @@ CMD_Diag_Write:
     TST.B   (3+zFieldValues)         ; Did the user cancel by submitting 'N'?
     BEQ     .qt                      ; Yes, go ahead to ack user and cancel
 
-    ; Perform the write
+    ; Perform the write.
 .go MOVE.B  #2,D0                    ; The command is two bytes long
     LEA     sCmdDiagWrite,A0         ; Location of the command template in RAM
     BSR     WIDGETCMD                ; Construct actual command in RAM
@@ -120,11 +148,22 @@ CMD_Diag_Write:
 
 
     PAGE
+* NeoWidEx Diag_Write scratch data allocation ===============
+    SECTION kSecScratch
+
+    DS.W    0
+z_CDiagAutoOffsetInitVals:
+    DC.L    $00000001                ; Initial field vals for engaging ATF
+
+
+    PAGE
 * NeoWidEx Diag_Write strings ===============================
     SECTION kSecStrings
 
 sCmdDiagWrite:
     DC.B    $10,$0B                  ; Diag_Write command (it's short!)
+s_CDiagWriteAutoOffset:
+    DC.B    $10,$0C                  ; Set_Auto_Offset command (it's short!)
 s_CDiagWriteStatusExp:
     DC.B    $10,$01,$06              ; Command to write exception registers
 s_CDiagWriteStatusStd:
@@ -143,11 +182,19 @@ s_CDiagWritePrompts:                 ; Form prompts for asking about seeking
     DC.L    .p1
 .p1 DC.B    'SEEK FIRST',0
 
-s_CDiagReallyWriteForm:              ; User form for confirming write intent
+s_CDiagAutoOffsetForm:               ; User form for asking about Set_AutoOffset
+    DC.B    $0D,'DO FINE HEAD POSITIONING FOR TRACK CENTRING? a',0
+
+    DS.W    0
+s_CDiagAutoOffsetPrompts:
+    DC.L    .p1
+.p1 DC.B    'CENTRE HEADS',0
+
+s_CDiagWriteConfirmForm:             ; User form for confirming write intent
     DC.B    $0D,'REALLY WRITE? a',0
 
     DS.W    0
-s_CDiagReallyWritePrompts:           ; Form promts for confiming write intent
+s_CDiagWriteConfirmPrompts:          ; Form promts for confiming write intent
     DC.L    .p1
 .p1 DC.B    'WRITE',0
 
