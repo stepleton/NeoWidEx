@@ -78,4 +78,4 @@ people and resources:
 - The entire [LisaList](https://groups.google.com/forum/#!forum/lisalist)
   community.
 
--- _[Tom Stepleton](stepleton@gmail.com), 10 April 2017, London_
+-- _[Tom Stepleton](mailto:stepleton@gmail.com), 10 April 2017, London_
