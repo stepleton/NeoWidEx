@@ -36,8 +36,8 @@ You can get started right away with NeoWidEx if you have:
 If you're missing any of these things but wish to use NeoWidEx anyway, refer to
 the "System requirements" section in [MANUAL.md](MANUAL.md#system-requirements).
 
-NeoWidEx will run on a Lisa 2/5 (i.e. a Lisa 2 with a built-in external 
-parallel port), but it will only be able to access drives attached to that
+NeoWidEx will run on a Lisa 2/5---that is, a Lisa 2 with a built-in external
+parallel port---but it will only be able to access drives attached to that
 port. Most NeoWidEx options will be unavailable unless that drive is a Widget.
 
 The [LisaEm](http://lisa.sunder.net) emulator will run NeoWidEx, although

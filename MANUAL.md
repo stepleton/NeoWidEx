@@ -33,8 +33,8 @@ You can get started right away with NeoWidEx if you have:
   http://www.bigmessowires.com/floppy-emu/)).
 - A Lisa 2 with ROM version H.
 
-NeoWidEx will run on a Lisa 2/5 (i.e. a Lisa 2 with a built-in external
-parallel port), but it will only be able to access drives attached to that
+NeoWidEx will run on a Lisa 2/5---that is, a Lisa 2 with a built-in external
+parallel port---but it will only be able to access drives attached to that
 port. Most NeoWidEx options will be unavailable unless that drive is a Widget.
 
 The [LisaEm](http://lisa.sunder.net) emulator will run NeoWidEx, although
@@ -48,7 +48,7 @@ methods of starting NeoWidEx may be possible but have not been attempted.
 NeoWidEx expects the Lisa's memory to be configured [as the Boot ROM arranges
 it on startup](https://github.com/stpltn/bootloader#operational-description),
 and NeoWidEx itself should be loaded into a contiguous memory region starting
-at address $000800. NeoWidEx's code is not relocatable.
+at address `$000800`. NeoWidEx's code is not relocatable.
 
 **ROM version H:** NeoWidEx performs some tasks by calling unpublished routines
 in the Lisa's boot ROM. For this reason, a NeoWidEx built for one boot ROM
@@ -122,7 +122,7 @@ with a bit-by-bit explanation of what the status means.
 
 #### :star: BUFFER...
 
-This menu option leads to the [Buffer submenu](#buffer-submenu).
+This menu option leads to the [Buffer submenu](#buffer-submenu-options).
 
 #### :star: DRIVE INFO
 
@@ -199,7 +199,7 @@ precise control over the behaviour and side-effects of Widget commands.
 
 NeoWidEx reads a user-specified block from the hard drive using the ProFile
 `Read` command. The data read from the drive will be read to the disk data
-buffer, which can be examined with the utilities available in the `BUFFER...`
+buffer, which can be examined with the utilities available in the BUFFER...
 submenu.
 
 This command will not work on a Widget that has failed its self tests.
@@ -213,18 +213,18 @@ This command will not work on a Widget that has failed its self tests.
 
 #### WIDGET READ
 
-:x: This option is not implemented yet :x:
+:x: This option is not implemented yet. :x:
 
 NeoWidEx reads a user-specified contiguous range of blocks from the Widget
 using the `Sys_Read` command. The data read from the drive will be read to the
 disk data buffer, which can be examined with the utilities available in the
-`BUFFER...` submenu.
+BUFFER... submenu.
 
 This command will not work on a Widget that has failed its self tests.
 
 #### WIDGET WRITE
 
-:x: This option is not implemented yet :x:
+:x: This option is not implemented yet. :x:
 
 NeoWidEx uses the `Sys_Write` command to write multiple blocks' worth of data
 from the disk buffer to a user-specified contiguous range of blocks on
@@ -249,8 +249,8 @@ may be used for a diagnostic read or write command to follow.
 NeoWidEx issues the `Set_AutoOffset` command, which directs the Widget to
 fine-tune the location of the heads over the current track. (Widget has two
 mechanisms for head positioning: a coarse adjustment that employs an optical
-signal and a fine adjustment that uses an alignment signal stored present on
-the physical media itself. This second signal is the one used by the
+signal and a fine adjustment that uses an alignment signal stored on the
+physical media itself. This second signal is the one used by the
 `Set_AutoOffset` command.)
 
 #### READ AT SEEK
@@ -264,7 +264,7 @@ This option may be used to read data from any sector on the disk, including
 those used to store spare tables and spare blocks.
 
 The data read from the drive will be read to the disk data buffer, which can be
-examined with the utilities available in the `BUFFER...` submenu.
+examined with the utilities available in the BUFFER... submenu.
 
 #### WRITE AT SEEK
 
@@ -276,42 +276,105 @@ before the write takes place.
 This option may be used to write data to any sector on the disk, including
 those used to store spare tables and spare blocks.
 
-Ordinary writes to Widget engage the fine head positioning mechanism (see
-[AUTOOFFSET](#autooffset)) prior to committing data to the disk media.
-This NeoWidEx option does not perform this step, which means that data could
-be written slightly to the side of the centre of the disk track. If this is
-not desirable, consider first seeking via [SEEK](#seek), performing fine head
-positioning via [AUTOOFSET](#autooffset), _then_ using WRITE AT SEEK to
-modify data at the seek location.
+:warning: Ordinary writes to Widget engage the fine head positioning mechanism
+(see [AUTOOFFSET](#autooffset)) prior to committing data to the disk media.
+This NeoWidEx option gives you an opportunity to engage this mechanism prior to
+the write, which is generally a good idea.
 
 #### READ HEADER
 
+Via the `Diag_ReadHeader` command, this option allows the user to read the
+header, and all the data, of any sector on the same cylinder/head of the
+Widget's last seek. Like other low-level IO options, the user may specify a new
+seek location prior to the read.
+
+Headers are 13-byte strings that precede sector data on the Widget, encoding
+the sector's cylinder/head/sector address. Use the BUFFER... submenu to access
+facilities for viewing headers.
+
 #### SCAN
+
+NeoWidEx issues the `Scan` command to initiate a surface scan of the Widget's
+disk media, which updates the spare table if any unreadable or
+difficult-to-read blocks are detected. This is the same procedure that occurs
+when the Widget powers up, producing the rapid "squeaky ticking" noise that
+lasts for a few minutes.
 
 #### SOFT RESET
 
+NeoWidEx issues the `Soft_Reset` command to restart the Widget's controller,
+which in turn causes the Widget to reinitialise its internal state, reloading
+the spare table from disk. (This procedure produces the first few seconds of
+seeking followed by the "squeaky squeaky!" noise observed after power-up.)
+Unlike the actual behaviour on power-up, the Widget does not perform a surface
+scan after squeaking.
+
 #### RESET SERVO
+
+NeoWidEx issues the `Reset_Servo` command to reset the Widget's servo subsystem.
+It appears to be normal for the LED at the front of the Widget to go off
+after the Widget executes this command.
 
 #### PARK HEADS
 
+NeoWidEx issues the `Send_Park` command, which orders the Widget to move the
+heads to "cylinder `$235`". This location is not a real cylinder at all but
+a location outside of the disk surface and (according to the ERS document)
+"very near the inside diameter crash stop".
+
+:warning: NeoWidEx does not park the Widget's heads on its own. To avoid
+surface damage from the heads contacting the disk media, consider using this
+option at the end of your NeoWidEx sessions, especially before moving your
+Widget.
+
 #### INIT SPR TBL
+
+NeoWidEx issues the `Initialize_SpareTable` command with user-provided
+offset and interleave parameters. The Widget writes "clean" spare table
+records (indicating no bad blocks and no spare blocks in use) to both default
+spare table locations: cylinder/head/sector addresses `$AF/$00/$0F` and
+`$157/$01/$11`.
+
+The offset and interleave parameters should be the same as the ones used when
+the Widget was last formatted. This information can be recovered from the
+[DRIVE INFO](#drive-info) option.
+
+:warning: `Initialize_SpareTable` does not remove any other spare tables that
+might be present on the Widget---a condition that can occur if the Widget
+decides that one of the default spare table locations should itself be
+spared to another spare block. After the command executes, the default locations
+will be overwritten, but the "spared" spare table will still linger on
+disk---and because it has a larger serial number, the Widget will still
+consider it authoritative whenever it reloads the spare table.
 
 #### FORMAT TRACK
 
-#### UTILITIES...
+NeoWidEx issues the `Format_Track` command with user-provided offset and
+interleave parameters. This command does not format the entire disk but only
+the track that is currently underneath the heads, and only the head that was
+designated by the last seek.
+
+:warning: Using the [SEEK](#seek) and [AUTOOFFSET](#autooffset) menu options
+immediately prior to FORMAT TRACK helps ensure that the formatting signal is
+applied to the very centre of the track you intend to format.
+
+#### :star: UTILITIES...
+
+This menu option leads to the [Utilities submenu](#utilities-submenu-options).
+
+#### :star: QUIT
+
+This option terminates NeoWidEx and returns the user to the boot ROM's menu
+system.
+
+#### :star: THANKS
+
+This option resents some acknowledgements text similar to the
+[acknowledgements section]( #acknowledgements) of this document.
+
+Users are encouraged to revisit this menu option occasionally.
 
 Format might not issue a scan
-
-#### QUIT
-
-#### THANKS
-
-Presents some acknowledgements text similar to the [acknowledgements section](
-#acknowledgements) of this document.
-
-Users are encouraged to revisit this command occasionally.
-
-Diag-Write might benefit from engaging ATF
 
 ## Acknowledgements
 
