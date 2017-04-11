@@ -110,7 +110,7 @@ operation in progress.
 
 ## Main menu options
 
-![NeoWidEx main menu](images/MainMenu_0.3.png "NeoWidEx main menu display")
+![NeoWidEx main menu](images/MainMenu_0.3.png "Main menu display")
 
 The NeoWidEx main menu presents the following menu options. The ones marked with
 a star (:star:) are compatible with all Lisa parallel port hard drives.
@@ -373,6 +373,23 @@ This option resents some acknowledgements text similar to the
 [acknowledgements section]( #acknowledgements) of this document.
 
 Users are encouraged to revisit this menu option occasionally.
+
+## Buffer submenu options
+
+![NeoWidEx buffer submenu](images/BufferMenu_0.3.png "Buffers submenu display")
+
+The NeoWidEx buffer submenu presents the following menu options. All options are
+are compatible with all Lisa parallel port hard drives, so all are marked with
+a star (:star:).
+
+## Utilities submenu options
+
+![NeoWidEx utilities submenu](
+images/UtilitiesMenu_0.3.png "Utilities submenu display")
+
+The NeoWidEx utilities submenu presents the following menu options. The ones
+marked with a star (:star:) are compatible with all Lisa parallel port hard
+drives.
 
 Format might not issue a scan
 
