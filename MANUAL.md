@@ -73,7 +73,7 @@ ROM is
 NeoWidEx has poor accessibility for people with certain kinds of visual
 impairments. Additionally, some people may have trouble reading the text
 NeoWidEx prints to the screen, since NeoWidEx uses the capital-letters-only
-font in the Lisa's boot ROM. Other accessibility shortcomings may exist.
+font in the Lisa's boot ROM. Other shortcomings may exist.
 
 If you are having trouble using NeoWidEx due to any of its accessibility
 limitations, please [contact me via email](mailto:stepleton@gmail.com).
@@ -199,15 +199,15 @@ precise control over the behaviour and side-effects of Widget commands.
 
 NeoWidEx reads a user-specified block from the hard drive using the ProFile
 `Read` command. The data read from the drive will be read to the disk data
-buffer, which can be examined with the utilities available in the BUFFER...
-submenu.
+memory buffer, which can be examined with the utilities available in [the
+BUFFER... submenu](#buffer-submenu-options).
 
 This command will not work on a Widget that has failed its self tests.
 
 #### :star: GENERIC WRITE
 
 NeoWidEx uses the ProFile `Write` command to write the contents of the disk
-data buffer to a user-specified block on the hard drive.
+data memory buffer to a user-specified block on the hard drive.
 
 This command will not work on a Widget that has failed its self tests.
 
@@ -217,8 +217,8 @@ This command will not work on a Widget that has failed its self tests.
 
 NeoWidEx reads a user-specified contiguous range of blocks from the Widget
 using the `Sys_Read` command. The data read from the drive will be read to the
-disk data buffer, which can be examined with the utilities available in the
-BUFFER... submenu.
+disk data buffer, which can be examined with the utilities available in [the
+BUFFER... submenu](#buffer-submenu-options).
 
 This command will not work on a Widget that has failed its self tests.
 
@@ -227,8 +227,8 @@ This command will not work on a Widget that has failed its self tests.
 :x: This option is not implemented yet. :x:
 
 NeoWidEx uses the `Sys_Write` command to write multiple blocks' worth of data
-from the disk buffer to a user-specified contiguous range of blocks on
-the Widget.
+from the disk data memory buffer to a user-specified contiguous range of
+blocks on the Widget.
 
 This command will not work on a Widget that has failed its self tests.
 
@@ -263,15 +263,16 @@ the read takes place.
 This option may be used to read data from any sector on the disk, including
 those used to store spare tables and spare blocks.
 
-The data read from the drive will be read to the disk data buffer, which can be
-examined with the utilities available in the BUFFER... submenu.
+The data read from the drive will be read to the disk data memory buffer,
+which can be examined with the utilities available in the [BUFFER... submenu](
+#buffer-submenu-options).
 
 #### WRITE AT SEEK
 
-NeoWidEx uses the `Diag_Write` command to write the contents of the disk
-data buffer to the sector at the cylinder/head/sector address from the Widget's
-last seek. This option also allows the user to specify a new seek location
-before the write takes place.
+NeoWidEx uses the `Diag_Write` command to write the contents of the disk data
+memory buffer to the sector at the cylinder/head/sector address from the
+Widget's last seek. This option also allows the user to specify a new seek
+location before the write takes place.
 
 This option may be used to write data to any sector on the disk, including
 those used to store spare tables and spare blocks.
@@ -289,8 +290,8 @@ Widget's last seek. Like other low-level IO options, the user may specify a new
 seek location prior to the read.
 
 Headers are 13-byte strings that precede sector data on the Widget, encoding
-the sector's cylinder/head/sector address. Use the BUFFER... submenu to access
-facilities for viewing headers.
+the sector's cylinder/head/sector address. Use the [BUFFER... submenu](
+#buffer-submenu-options) to access facilities for viewing headers.
 
 #### SCAN
 
@@ -336,7 +337,8 @@ spare table locations: cylinder/head/sector addresses `$AF/$00/$0F` and
 `$157/$01/$11`.
 
 The offset and interleave parameters should be the same as the ones used when
-the Widget was last formatted. This information can be recovered from the
+the Widget was last formatted, which in most cases should be the parameters
+stored in the existing spare table. This information can be recovered from the
 [DRIVE INFO](#drive-info) option.
 
 :warning: `Initialize_SpareTable` does not remove any other spare tables that
@@ -358,6 +360,9 @@ designated by the last seek.
 immediately prior to FORMAT TRACK helps ensure that the formatting signal is
 applied to the very centre of the track you intend to format.
 
+:warning: The offset and interleave parameters used for this option should
+probably match the offset and interleave parameters stored in the spare table
+
 #### :star: UTILITIES...
 
 This menu option leads to the [Utilities submenu](#utilities-submenu-options).
@@ -378,9 +383,61 @@ Users are encouraged to revisit this menu option occasionally.
 
 ![NeoWidEx buffer submenu](images/BufferMenu_0.3.png "Buffers submenu display")
 
-The NeoWidEx buffer submenu presents the following menu options. All options are
-are compatible with all Lisa parallel port hard drives, so all are marked with
-a star (:star:).
+The buffer submenu contains options for viewing and changing NeoWidEx's memory
+buffer, which is used to store data read from and written to the Widget.
+
+As you probably already know, most Lisa operating systems organise Widget
+532-byte blocks into 20 bytes of **tag** information followed by 512 bytes of
+**data**. The tag is often used for filesystem metadata; some operating systems
+like Xenix don't seem to have much use for it. NeoWidEx buffer display and
+manipulation routines reflect this organisation.
+
+All buffer submenu options are are compatible with all Lisa parallel port hard
+drives, so all are marked with a star (:star:).
+
+#### :star: SHOW CONTENTS
+
+NeoWidEx displays a hex dump of the data in the data buffer.
+
+#### :star: ...AS SPR TBL
+
+NeoWidEx attempts to interpret and display the contents of the memory buffer as
+a Widget or a ProFile spare table, depending on the user's selection.
+
+#### :star: SECTOR HEADER
+
+NeoWidEx displays the 13-byte sector header retrieved during the most recent
+invocation of [READ HEADER](#read-header).
+
+#### :star: EDIT CONTENTS
+
+Via a sequence of [forms](#forms), the user can edit the tag and the data
+portions of the memory buffer. Each form will change four longwords of the
+buffer, or fewer if there aren't that many left before the buffer ends. Once
+a form is submitted, the user's changes are committed to memory.
+
+#### :star: PATTERN FILL
+
+NeoWidEx fills the memory buffer with a repeated pattern of 1, 2, 3, or 4
+user-specified longwords.
+
+#### :star: RANDOM FILL
+
+NeoWidEx fills the memory buffer with pseudorandom data. The user supplies a
+16-bit random seed first. The pseudorandom data is generated by a 16-bit
+[linear-feedback shift register](
+https://en.wikipedia.org/wiki/Linear-feedback_shift_register).
+
+#### :star: RESIZE BUFFER
+
+This option allows the user to change the sizes of the tag and data portions
+of the memory buffer, *strictly for the purposes of the options within the
+BUFFER... submenu*.
+
+In anticipation of a day when the [WIDGET READ]( #widget-read) and [WIDGET
+WRITE](#widget-write) main menu options are available, the user can also resize
+the buffer to contain multiple blocks, though this capability has little
+practical use at the moment.
 
 ## Utilities submenu options
 
