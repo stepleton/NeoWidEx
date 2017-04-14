@@ -413,8 +413,9 @@ invocation of [READ HEADER](#read-header).
 
 Via a sequence of [forms](#forms), the user can edit the tag and the data
 portions of the memory buffer. Each form will change four longwords of the
-buffer, or fewer if there aren't that many left before the buffer ends. Once
-a form is submitted, the user's changes are committed to memory.
+buffer (or fewer if there aren't that many left in the tag/data portion being
+edited). Once a form is submitted, the user's changes to those longwords are
+committed to memory.
 
 #### :star: PATTERN FILL
 
@@ -432,7 +433,8 @@ https://en.wikipedia.org/wiki/Linear-feedback_shift_register).
 
 This option allows the user to change the sizes of the tag and data portions
 of the memory buffer, *strictly for the purposes of the options within the
-BUFFER... submenu*.
+BUFFER... submenu*. Sizes are specified in numbers of longwords, so multiply
+by four for bytes.
 
 In anticipation of a day when the [WIDGET READ]( #widget-read) and [WIDGET
 WRITE](#widget-write) main menu options are available, the user can also resize
@@ -448,7 +450,119 @@ The NeoWidEx utilities submenu presents the following menu options. The ones
 marked with a star (:star:) are compatible with all Lisa parallel port hard
 drives.
 
+#### GREP SECTORS
+
+NeoWidEx scans every sector on the Widget (including those used as spare blocks)
+for a 1 to 16-byte-long user-provided byte string. The cylinder/head/sector
+addresses of sectors containing the string are listed on the display.
+
+The search begins at a sector specified by the user, counting upward through
+sectors on the same head/cylinder, then through heads on the same cylinder,
+then through cylinders. Once the "end" of the disk is reached (i.e. the sector
+with the largest cylinder/head/sector address is scanned), the procedure loops
+around to cylinder 0, head 0, sector 0 and continues counting upward until the
+starting sector is reached.
+
+The user can cancel the scan by typing **Q**. NeoWidEx remembers the address
+of the last sector scanned and will provide this as the default value for the
+starting sector the next time GREP SECTORS is invoked.
+
+Useful fact: the first longword of the default search string is special.
+`$F0783C1E` is the sequence of "fence" or "password" bytes that Widget stores
+in each spare table written to disk. Grepping for this sequence should locate
+all of the spare tables on the disk---as well as any other sectors that happen
+to contain these bytes.
+
+#### :star: GREP BLOCKS
+
+NeoWidEx scans every addressable block on the drive for a 1 to 16-byte-long
+user-provided byte string. This method cannot access spare tables, unused
+spare blocks, or spared sectors, since none of these can be referred to by
+a logical block address. The addresses of blocks containing the string are
+listed on the display.
+
+The search begins at a logical block address specified by the user, counting
+upward through addresses. Once the "end" of the disk is reach (i.e. the block
+at the largest logical block address is scanned), the procedure loops around to
+block `$000000` and continues counting upward until the starting block is
+reached.
+
+The user can cancel the scan by typing **Q**. NeoWidEx remembers the address
+of the last block scanned and will provide this as the default value for the
+starting block the next time GREP BLOCKS is invoked.
+
+#### :star: EXERCISE DISK
+
+![NeoWidEx exercise disk screenshot](
+images/ExerciseDisk_0.3.jpg "NeoWidEx exercise disk display")
+
+NeoWidEx advances in user-specified fixed increments through blocks on the
+drive, looping around to the beginning if it would otherwise advance past the
+drive's final block (i.e. the block at the largest logical block address). At
+each block address, it first overwrites all of the data in the block, then
+reads it back. This allows NeoWidEx to test both reading and writing, and also
+to verify for itself that data has been stored and recovered faithfully.
+
+This procedure iterates until NeoWidEx advances back to the first block it
+wrote. This means that the fixed increment determines whether NeoWidEx will
+visit every block on the drive. Only increments that are [relatively prime](
+https://en.wikipedia.org/wiki/Relatively_prime) to the total number of blocks
+will result in a complete in a complete tour through all blocks: if the
+increment is `$2`, then on an ordinary Widget (with `$4C00` blocks), only half
+the blocks will be visited.
+
+The default increment of one block means that seeks will be as infrequent as
+they can be (unless the heads take a detour to visit a spare block "covering"
+for a particular logical block address). Certain larger increments will send
+the heads skipping back and forth over the disk platter, which can be useful if
+you wish to put your head servoing mechanism to the test. On an ordinary
+Widget, the nearest relative primes to half the disk capacity (`$25FF` and
+`$2601$`) causes the head to seek back and forth over half the cylinders
+between each write, "crab-walking" from one edge of the platter to the other.
+The largest possible increment for Widget, $4BFF, will actually send the heads
+creeping "backwards" across the surface. (Modular arithmetic is fun!)
+
+Either the existing contents of the disk data buffer or pseudorandom data
+(generated with the same algorithm used by [RANDOM FILL](#random-fill) can be
+written to blocks. The user supplies the random seed for this generator before
+the procedure begins; the seed value `$FFFF` means use the current disk data
+buffer contents. In the pseudorandom data case, new data will be generated for
+each block.
+
+A with GREP BLOCKS, NeoWidEx allows the user to select the starting block of
+the exercise. The user can cancel the procedure by typing **Q**. By default,
+the exercise will not stop if an error occurs, but if the user opts for
+termination on error, NeoWidEx will remember both the address of the block that
+caused the error and the internal state of the pseudorandom data generator,
+allowing the exercise to continue in the same location where it previously
+failed.
+
+The user can direct EXERCISE DISK to write data using either the ProFile
+`Write` or `Write_Verify` commands. `Write_Verify` causes the drive to write,
+read, and check the data internally (much like EXERCISE DISK does).
+
+NeoWidEx displays statistics of the exercise as it proceeds. Errors encountered
+during writes (or writes-with-verify) and errors encountered during reads are
+counted in separate tables. Note that `Write` commands cannot detect or raise
+read errors, CRC errors, or ECC errors. `BLOCK-` indicates the address of the
+last block visited by the exercise; `COUNT-` indicates the number of blocks
+visited so far, and `CRC-` displays the CRC of the data last written to the
+drive, according to the CRC algorithm used by NeoWidEx. At the bottom,
+`NEOWIDEX CRC DATA MISMATCHES` counts the number of times the NeoWidEx CRC of
+the data written to the drive fails to match the CRC of the data read back.
+
+:warning: This option can easily destroy all data on your hard drive.
+
+#### TRACK OFFSETS
+
+#### FORMAT
+
 Format might not issue a scan
+
+:warning: This option can easily destroy all data on your hard drive.
+
+#### :star: ADDRESSING...
+
 
 ## Acknowledgements
 
