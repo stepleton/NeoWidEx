@@ -618,10 +618,63 @@ the spare table will not have been cleared.)
 
 FORMAT cannot be cancelled once it has begun its work.
 
-:warning: This option will destroy all data on your hard drive.
+:warning: This option can easily destroy all data on your hard drive.
 
 #### :star: ADDRESSING...
 
+![NeoWidEx addressing submenu](
+images/AddressingMenu_0.3.png "Addressing submenu display")
+
+There are several ways to refer to sectors on a Widget. The options in this
+sub-submenu give you a way to translate between them (when such translation is
+possible).
+
+* The actual location of a sector's ones and zeros on the disk media---their
+  cylinder/head/sector address---are the "physical CHS" address, or PHYS.CHS
+  in the menu.
+* When the physical sector address is translated through the interleave map
+  found in the spare table (in reverse---by identifying the position where the
+  physical sector address occurs in the map), you obtain the "logical CHS"
+  address, or LOG.CHS in the menu.
+* Arrange all of the Widget's sectors by their logical CHS address, sorting
+  them first by cylinder, then by head, then by (logical) sector. Each sector's
+  position in this ordering, starting with `$000000`, is its "physical block
+  address", or PHYS.BA in the menu.
+* Set aside every 256th sector from the ordering, starting with the one that
+  bears physical block address `$000100`. For the remaing sectors, each sector's
+  position in this new ordering, starting with `$000000`, is its "logical block
+  address", or LOG.BA in the menu.
+* Gather the sectors set aside in the previous step: these are the spare blocks,
+  and their position in this separate ordering is their spare block number, or
+  SPARE in the menu. As this procedure has made clear, these sectors have no
+  logical block address.
+
+The above assumes a pristine Widget that can read and write reliably from/to
+all sectors. In practice, if one of the non-spare-block sectors has gone bad,
+the Widget will allocate one of the spare blocks to hold its data, and the
+logical block address will refer to the spare block instead of the original
+sector.
+
+Except for the interleave map used to convert between physical and logical CHS
+addresses, the calculations performed by these menu options don't pay attention
+to the Widget's actual spare table, so logical block addresses are always
+assumed to point to their original non-spare-block sectors. It is easy enough
+to account for sparing on your own, though: using the SPARE TABLE option (the
+same as [SPARE TABLE](#spare-table) in the main menu), look for your logical
+block address in the `LBA` column, check that the `IN USE`, `USABLE`, and
+`SPARE TYPE` columns say `YES`, `YES`, and `SPARE` respectively, then enter
+the spare number under the `NUM` column at left into the form presented by the
+`SPARE` menu option.
+
+The ADDRESSING... menu options cache the drive's interleave map the first time
+any of the options is used. If you change the drive's interleave map (e.g. by
+formatting the drive with different interleave options), you will need to
+reload the map before these options can give you useful information. The
+RELOAD IL MAP menu option will refresh the cached interleave map used for
+address calculations.
+
+In Lisas without a Widget, these menu options use default parameters for a
+10 MB Widget using interleave scheme `$01`.
 
 ## Acknowledgements
 
