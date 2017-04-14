@@ -63,7 +63,7 @@ NeoWidEx is written in around 10,000 lines of 68000 macro assembly.
 
 ## Acknowledgements
 
-It would not have been possible for me to write NeoWidEx without help of the
+It would not have been possible for me to write NeoWidEx without the help of the
 following people and resources:
 
 - [Dr. Patrick Schäfer](http://john.ccac.rwth-aachen.de:8000/patrick/index.htm),  whose numerous contributions include disassembly and/or analysis of various
@@ -78,4 +78,4 @@ following people and resources:
 - The entire [LisaList](https://groups.google.com/forum/#!forum/lisalist)
   community.
 
--- _[Tom Stepleton](mailto:stepleton@gmail.com), 10 April 2017, London_
+-- _[Tom Stepleton](mailto:stepleton@gmail.com), 14 April 2017, London_
