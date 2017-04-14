@@ -1,0 +1,28 @@
+# Building NeoWidEx
+
+The original NeoWidEx author's unimpressive build workflow is as follows:
+
+1. Load `NeoWidEx.X68` in the [EASy68K](http://www.easy68k.com/) editor.
+
+2. Assemble (Project → Assemble Source...).
+
+3. Use the `srec_cat` utility (distributed as part of the [SRecord package](
+   http://srecord.sourceforge.net/) to convert the `NeoWidEx.S68` file generated
+   by the assembler into a raw binary file prepared for loading into memory at
+   address `$800`. The command line:
+
+   `srec_cat NeoWidEx.S68 -offset -0x800 -o NeoWidEx.bin -binary`
+
+   The utility may warn that two different values have been specified for the
+   same memory address. If this occurs, it's probably necessary to edit the
+   section base addresses at the top of `NeoWidEx.X68` to give additional room
+   to whatever item has outgrown its space allocation (probably the code).
+   Warnings about data records not being in strictly ascending order may be
+   safely ignored.
+
+4. Use the `dc42_build_bootable_disk.py` script distributed with the
+   ["Stepleton" bootloader](https://github.com/stpltn/bootloader), along with
+   the bootloader binary itself, to create a bootable .dc42 floppy disk image
+   file.
+
+Other workflows may be just as good, or probably better.
