@@ -151,7 +151,7 @@ UTIL_Format:
     BNE     .qt                      ; Bail on failure
 
     ; Seek to track 0, head 0, sector 0.
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'2. TRACK 0 HEAD 0 TRIAL FORMAT'>
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'2. CYLINDER 0 HEAD 0 TRIAL FORMAT'>
     CLR.W   (2+z_UFormatCmdSeek)     ; Cylinder 0
     CLR.W   (4+z_UFormatCmdSeek)     ; Head 0, sector 0
     MOVE.B  #6,D0                    ; This command is six bytes long
@@ -262,28 +262,21 @@ UTIL_Format:
 
     ; Format complete! Finishing tasks now.
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'4. DRIVE SOFT RESET'>
-    MOVE.B  #2,D0                    ; This command is two bytes long
-    LEA     s_UFormatCmdSoftReset,A0   ; Command: Soft_Reset
-    JSR     WIDGETCMD                ; Construct actual command in RAM
-    JSR     WIDGETIO                 ; Issue command (we expect+ignore failure)
-
-    MOVE.B  #3,D0                    ; The next command is three bytes long
-    LEA     s_UFormatCmdStateRegs,A0   ; Command: get controller state registers
-    JSR     WIDGETCMD                ; Construct the actual command in RAM
-    MOVE.W  #19,D1                   ; We'll try the command 20 times
-.cs JSR     WIDGETIO                 ; Issue command
-    BEQ     .ck                      ; All OK? Jump to check state registers
-    DBEQ    D1,.cs                   ; Otherwise, try again
-
+    BSR     _UFormatSoftReset        ; Issue soft reset; await drive reawakening
+    BEQ     .c1                      ; All OK? Jump to check state registers
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatSoftResetFail
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatNoSpareTables
     JSR     WIDGETPERROR             ; Error! Print error message
     BRA     .qs                      ; Bail, try to restore standard status
 
-.ck CMPI.L  #$0001DBE0,kStdStatus    ; Are state registers as expected?
+.c1 CMPI.L  #$0001DBE0,kStdStatus    ; Are state registers as expected?
     BEQ     .is                      ; Yes, jump to initialise the spare table
     MOVE.L  kStdStatus,-(A7)         ; No; state registers on stack to print
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'  HMM... CONTROLLER STATE '>,lx
-    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatErrE
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatErrE_1
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,lx
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatErrE_2
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'0001DBE0'>
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatErrE_3
 
     ; Initialise the spare table
 .is mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'5. INITIALISE SPARE TABLE'>
@@ -295,8 +288,26 @@ UTIL_Format:
     BSR     _UFormatDoCmd            ; Issue command
     BNE     .qt                      ; Bail on failure
 
+    ; Reset the drive again
+.x2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'6. SECOND DRIVE SOFT RESET'>
+    BSR     _UFormatSoftReset        ; Issue soft reset; await drive reawakening
+    BEQ     .c2                      ; All OK? Jump to check state registers
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatSoftResetFail
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'LAST ERROR--'>
+    JSR     WIDGETPERROR             ; Error! Print error message
+    BRA     .qs                      ; Bail, try to restore standard status
+
+.c2 CMPI.L  #$0000DBE0,kStdStatus    ; Are state registers as expected?
+    BEQ     .sc                      ; Yes, jump to perform scan
+    MOVE.L  kStdStatus,-(A7)         ; No; state registers on stack to print
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatErrE_1
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,lx
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatErrE_2
+    mPrint  kCrtRow,kCrtCol,#kFirstCol,<'0000DBE0'>
+    mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#s_UFormatErrE_3
+
     ; Issue scan command
-.x2 mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'6. PERFORMING SURFACE SCAN'>
+.sc mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'7. PERFORMING SURFACE SCAN'>
     MOVE.B  #2,D0                    ; The Scan command is two bytes long
     LEA     s_UFormatCmdScan,A0      ; Command: Scan
     JSR     WIDGETCMD                ; Construct actual command in RAM
@@ -308,7 +319,7 @@ UTIL_Format:
     MOVE.W  #19,D1                   ; We'll try the command 20 times
 .s1 JSR     WIDGETIO                 ; Issue command
     BEQ     .ok                      ; All OK? Jump to the exit!
-    DBEQ    D1,.s1                   ; Otherwise, try again
+    DBRA    D1,.s1                   ; Otherwise, try again
 
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sCmdScanFail
     JSR     WIDGETPERROR             ; Error! Print error message
@@ -345,6 +356,33 @@ _UFormatDoCmd:
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,A1
     JSR     WIDGETPERROR             ; Error! Print error message
     ANDI.B  #$FB,CCR                 ; Clear Z flag to mark error
+.rt RTS                              ; Back to caller
+
+
+    ; _UFormatSoftReset -- Issue a Soft_Reset command; await drive reawakening
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   zWIOReadLen and zWIOWriteLen should be 0 prior to calling.
+    ;   On a successful return, kStdStatus contains a copy of the drive's state
+    ;       registers, not the standard status.
+    ;   Makes 20 attempts to get drive status after the reset. The Z bit is
+    ;       cleared iff a failure occurs on all twenty attempts, and a one-byte
+    ;       error code is saved at zWIOError. (On success, zWIOError is $00.)
+_UFormatSoftReset:
+    MOVE.B  #2,D0                    ; This command is two bytes long
+    LEA     s_UFormatCmdSoftReset,A0   ; Command: Soft_Reset
+    JSR     WIDGETCMD                ; Construct actual command in RAM
+    JSR     WIDGETIO                 ; Issue command (we expect+ignore failure)
+
+    MOVE.B  #3,D0                    ; The next command is three bytes long
+    LEA     s_UFormatCmdStateRegs,A0   ; Command: get controller state registers
+    JSR     WIDGETCMD                ; Construct the actual command in RAM
+    MOVE.W  #19,D1                   ; We'll try the command 20 times
+.cs JSR     WIDGETIO                 ; Issue command
+    BEQ     .rt                      ; All OK? Jump to return to caller
+    DBRA    D1,.cs                   ; Otherwise, try again
+
 .rt RTS                              ; Back to caller
 
 
@@ -431,16 +469,21 @@ s_UFormatErrC:
     DC.B    $0D,'FAILED TO FINE-TUNE HEAD POSITION AT THIS LOCATION.',0
 s_UFormatErrD:
     DC.B    $0D,'FAILED TO OBTAIN SERVO STATUS.',0
-s_UFormatErrE:
+s_UFormatErrE_1:
+    DC.B    $0D,'  HMM.... CONROLLER STATE ',0
+s_UFormatErrE_2:
     DC.B    ' DOES NOT MATCH EXPECTED'
-    DC.B    $0D,'  CONTROLLER STATE VALUE--0001DBE0. FORGING AHEAD ANYWAY...',0
+    DC.B    $0D,'  CONTROLLER STATE VALUE--',0
+s_UFormatErrE_3:
+    DC.B   '. FORGING AHEAD ANYWAY...',0
 s_UFormatErrF:
     DC.B    $0D,'FAILED TO INITIALISE SPARE TABLE.',0
 
 s_UFormatSoftResetFail:
     DC.B    $0D,'FAILED TO COMMUNICATE WITH DRIVE AFTER RESET. ATTEMPTED'
-    DC.B    $0D,'TO RETRIEVE CONTROLLER STATE VARIABLES 20 TIMES. THIS '
-    DC.B    $0D,'WIDGET HAS NO SPARE TABLES NOW. LAST ERROR--',0
+    DC.B    $0D,'TO RETRIEVE CONTROLLER STATE VARIABLES 20 TIMES.',0
+s_UFormatNoSpareTables:
+    DC.B    $0D,'THIS WIDGET HAS NO SPARE TABLES NOW. LAST ERROR--',0
 
 s_UFormatForm:                       ; User form for command parameters
     DC.B    $0D,'FORMAT OFFSET-aa INTERLEAVE-ba',0

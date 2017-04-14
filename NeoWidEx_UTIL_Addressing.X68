@@ -31,6 +31,7 @@ UTIL_Addressing:
 
     ; To reduce code size, all menu options implemented in this file use these
     ; shared snippets to print something and return to the menu UI above.
+    ; These are not subroutines: the menu option code BRAnches here.
 _UAddr_CopyPrintResult:
     MOVE.L  D0,z_UAddrLba            ; Copy LBA to memory
     MOVE.L  D1,z_UAddrPba            ; Copy PBA to memory
@@ -70,6 +71,11 @@ _UAddr_Nevermind:
     RTS                              ; Back to caller
 
 
+    ; _UAddr_FromLba -- Compute other addresses for a user-supplied LBA; print
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D6/A0-A4
 _UAddr_FromLba:
     MOVE.L  #s_UAddrBannerPrefix,-(A7)   ; Banner prefix on stack to print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'LOGICAL BLOCK ADDRESS ---'>
@@ -93,6 +99,11 @@ _UAddr_FromLba:
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
+    ; _UAddr_FromPba -- Compute other addresses for a user-supplied PBA; print
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D6/A0-A4
 _UAddr_FromPba:
     MOVE.L  #s_UAddrBannerPrefix,-(A7)   ; Banner prefix on stack to print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'PHYSICAL BLOCK ADDRESS ---'>
@@ -116,6 +127,11 @@ _UAddr_FromPba:
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
+    ; _UAddr_FromLchs -- Compute other addresses for a user-supplied LCHS; print
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D6/A0-A4
 _UAddr_FromLchs:
     MOVE.L  #s_UAddrBannerPrefix,-(A7)   ; Banner prefix on stack to print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'LOGICAL C.H.S. ADDRESS ---'>
@@ -141,6 +157,11 @@ _UAddr_FromLchs:
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
+    ; _UAddr_FromPchs -- Compute other addresses for a user-supplied PCHS; print
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D6/A0-A4
 _UAddr_FromPchs:
     MOVE.L  #s_UAddrBannerPrefix,-(A7)   ; Banner prefix on stack to print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'PHYSICAL C.H.S. ADDRESS ---'>
@@ -166,6 +187,11 @@ _UAddr_FromPchs:
     BRA     _UAddr_CopyPrintResult   ; Save and print result; return to caller
 
 
+    ; _UAddr_FromPchs -- Compute other addresses for user's spare index; print
+    ; Args:
+    ;   (none)
+    ; Notes:
+    ;   Trashes D0-D6/A0-A4
 _UAddr_FromSpare:
     MOVE.L  #s_UAddrBannerPrefix,-(A7)   ; Banner prefix on stack to print
     mPrint  kCrtRow,kCrtCol,#kFirstCol,s,<'SPARE INDEX ---'>

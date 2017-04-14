@@ -69,11 +69,13 @@ UTIL_Track_Offsets:
     SUBQ.W  #1,z_UTrakOfstTrackMax
     MOVE.W  z_UTrakOfstTrackMin,-(A7)  ; Next track to stack for printing
     mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'WALKING BACK TO FIRST TRACK-'>,hx
-    SUBI.W  #kCharHeight,kCrtRow     ; Rewind cursor to overwrite the above
+    JSR     QUITPOLL                 ; Did the user press the 'q' key?
+    BEQ     .q2                      ; If so, give up
     BSR     _UTrakOfstAccessOut      ; Advance one track away from spindle
     BNE     .q2                      ; Give up on error
     BSR     _UTrakOfstCheckTrack     ; Check that head is over expected track
     BNE     .q2                      ; If not, give up
+    SUBI.W  #kCharHeight,kCrtRow     ; Rewind cursor to overwrite the above
     TST.W   z_UTrakOfstTrack         ; Are we at track 0 yet?
     BRA     .s0                      ; Jump to top of loop (preserves flags)
 
@@ -101,6 +103,8 @@ UTIL_Track_Offsets:
     ; Print current offset and advance to next track.
 .tr BSR     _UTrakOfstPrintDac       ; Retrieve and print servo offset DAC value
     BNE.S   .q2                      ; Give up on error
+    JSR     QUITPOLL                 ; Did the user press the 'q' key?
+    BEQ.S   .q2                      ; If so, give up
     ADDQ.W  #1,z_UTrakOfstTrackMin   ; Increment next track bounds
     ADDQ.W  #1,z_UTrakOfstTrackMax
     MOVE.W  zCylinders,D0            ; Copy total cylinders to D0
@@ -388,7 +392,7 @@ s_UTrakOfstCmdSetAutoOffset:
     DC.B    $10,$0C                  ; Set_AutoOffset command
 
 s_UTrakOfstForm:                     ; User form for asking about seeking
-    DC.B    $0D,'A SEEK COMMAND TELLS THE COMING READ-HEADER COMMANDS WHICH '
+    DC.B    $0D,'A SEEK COMMAND TELLS SEVERAL OF THE COMING COMMANDS WHICH '
     DC.B    $0D,'HEAD TO USE ON ALL TRACKS. SEEK SOMEWHERE FIRST? a',0
 
     DS.W    0
