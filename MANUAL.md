@@ -25,6 +25,65 @@ its own. Get ready to use NeoWidEx by studying the [Widget ERS document](
 http://bitsavers.trailing-edge.com/pdf/apple/disk/widget/Widget_ERS.pdf),
 particularly PDF pages 81-135.
 
+## Table of contents
+
+* [System requirements](#system-requirements)
+  - [Details](#details)
+* [User interface notes](#user-interface-notes)
+  - [Accessibility](#accessibility)
+  - [Hexadecimal numbers](#hexadecimal-numbers)
+  - [Forms](#forms)
+* [Main menu options](#main-menu-options)
+
+   [:star: LAST STATUS](#star-last-status),
+   [:star: BUFFER...](#star-buffer),
+   [:star: DRIVE INFO](#star-drive-info),
+   [:star: SPARE TABLE](#star-spare-table),
+   [FULL STATUS](#full status),
+   [SERVO STATUS](#servo status),
+   [ABORT STATUS](#abort status),
+   [SET RECOVERY](#set recovery),
+   [:star: GENERIC READ](#star-generic-read),
+   [:star: GENERIC WRITE](#star-generic-write),
+   [WIDGET READ](#widget read),
+   [WIDGET WRITE](#widget write),
+   [SEND RESTORE](#send restore),
+   [SEEK](#seek),
+   [AUTOOFFSET](#autooffset),
+   [READ AT SEEK](#read at seek),
+   [WRITE AT SEEK](#write at seek),
+   [READ HEADER](#read header),
+   [SCAN](#scan),
+   [SOFT RESET](#soft reset),
+   [RESET SERVO](#reset servo),
+   [PARK HEADS](#park heads),
+   [INIT SPR TBL](#init spr tbl),
+   [FORMAT TRACK](#format track),
+   [:star: UTILITIES...](#star-utilities),
+   [:star: QUIT](#star-quit),
+   [:star: THANKS](#star-thanks)
+
+* [Buffer submenu options](#buffer-submenu-options)
+
+   [:star: SHOW CONTENTS](#star-show-contents),
+   [:star: ...AS SPR TBL](#star-...as-spr-tbl),
+   [:star: SECTOR HEADER](#star-sector-header),
+   [:star: EDIT CONTENTS](#star-edit-contents),
+   [:star: PATTERN FILL](#star-pattern-fill),
+   [:star: RANDOM FILL](#star-random-fill),
+   [:star: RESIZE BUFFER](#star-resize-buffer)
+
+* [Utilities submenu options](#utilities-submenu-options)
+
+   [GREP SECTORS](#grep sectors),
+   [:star: GREP BLOCKS](#star-grep-blocks),
+   [:star: EXERCISE DISK](#star-exercise-disk),
+   [TRACK OFFSETS](#track offsets),
+   [FORMAT](#format),
+   [:star: ADDRESSING...](#star-addressing...)
+
+* [Acknowledgements](#acknowledgements)
+
 ## System requirements
 
 You can get started right away with NeoWidEx if you have:
@@ -122,7 +181,7 @@ with a bit-by-bit explanation of what the status means.
 
 #### :star: BUFFER...
 
-This menu option leads to the [Buffer submenu](#buffer-submenu-options).
+This menu option leads to [the Buffer submenu](#buffer-submenu-options).
 
 #### :star: DRIVE INFO
 
@@ -199,8 +258,8 @@ precise control over the behaviour and side-effects of Widget commands.
 
 NeoWidEx reads a user-specified block from the hard drive using the ProFile
 `Read` command. The data read from the drive will be read to the disk data
-memory buffer, which can be examined with the utilities available in [the
-BUFFER... submenu](#buffer-submenu-options).
+memory buffer, which can be examined with the utilities available in the
+[BUFFER... submenu](#buffer-submenu-options).
 
 This command will not work on a Widget that has failed its self tests.
 
@@ -217,8 +276,8 @@ This command will not work on a Widget that has failed its self tests.
 
 NeoWidEx reads a user-specified contiguous range of blocks from the Widget
 using the `Sys_Read` command. The data read from the drive will be read to the
-disk data buffer, which can be examined with the utilities available in [the
-BUFFER... submenu](#buffer-submenu-options).
+disk data buffer, which can be examined with the utilities available in the
+[BUFFER... submenu](#buffer-submenu-options).
 
 This command will not work on a Widget that has failed its self tests.
 
@@ -290,8 +349,9 @@ Widget's last seek. Like other low-level IO options, the user may specify a new
 seek location prior to the read.
 
 Headers are 13-byte strings that precede sector data on the Widget, encoding
-the sector's cylinder/head/sector address. Use the [BUFFER... submenu](
-#buffer-submenu-options) to access facilities for viewing headers.
+the sector's cylinder/head/sector address. Use the [SECTOR HEADER](
+#star-sector-header) option in the [BUFFER... submenu](#buffer-submenu-options)
+to access facilities for viewing headers.
 
 #### SCAN
 
@@ -339,7 +399,7 @@ spare table locations: cylinder/head/sector addresses `$AF/$00/$0F` and
 The offset and interleave parameters should be the same as the ones used when
 the Widget was last formatted, which in most cases should be the parameters
 stored in the existing spare table. This information can be recovered from the
-[DRIVE INFO](#drive-info) option.
+[DRIVE INFO](#star-drive-info) option.
 
 Prior to confirming whether you really wish to reinitialise the spare tables,
 NeoWidEx displays the sequence of command bytes it will issue to the Widget,
@@ -533,23 +593,24 @@ The largest possible increment for Widget, $4BFF, will actually send the heads
 creeping "backwards" across the surface. (Modular arithmetic is fun!)
 
 Either the existing contents of the disk data buffer or pseudorandom data
-(generated with the same algorithm used by [RANDOM FILL](#random-fill) can be
-written to blocks. The user supplies the random seed for this generator before
-the procedure begins; the seed value `$FFFF` means use the current disk data
-buffer contents. In the pseudorandom data case, new data will be generated for
-each block.
+(generated with the same algorithm used by [RANDOM FILL](#star-random-fill) can
+be written to blocks. The user supplies the random seed for this generator
+before the procedure begins; the seed value `$FFFF` means use the current disk
+data buffer contents. In the pseudorandom data case, new data will be generated
+for each block.
 
-A with GREP BLOCKS, NeoWidEx allows the user to select the starting block of
-the exercise. The user can cancel the procedure by typing **Q**. By default,
-the exercise will not stop if an error occurs, but if the user opts for
-termination on error, NeoWidEx will remember both the address of the block that
-caused the error and the internal state of the pseudorandom data generator,
-allowing the exercise to continue in the same location where it previously
-failed.
+As with [GREP BLOCKS](#star-grep-blocks), NeoWidEx allows the user to select
+the starting block of the exercise. The user can cancel the procedure by typing
+**Q**. By default, the exercise will not stop if an error occurs, but if the
+user opts for termination on error, NeoWidEx will remember both the address of
+the block that caused the error and the internal state of the pseudorandom data
+generator, allowing the exercise to continue in the same location where it
+previously failed.
 
 The user can direct EXERCISE DISK to write data using either the ProFile
-`Write` or `Write_Verify` commands. `Write_Verify` causes the drive to write,
-read, and check the data internally (much like EXERCISE DISK does).
+`Write` or `Write_Verify` commands. `Write_Verify` causes the drive controller
+to write, read, and check the data internally (much like EXERCISE DISK is doing
+external to the disk).
 
 NeoWidEx displays statistics of the exercise as it proceeds. Errors encountered
 during writes (or writes-with-verify) and errors encountered during reads are
@@ -587,8 +648,8 @@ Differences from the Apple /// procedure are as follows:
   better settle on the centre of the track.
 * NeoWidEx cannot hard-reset the Widget before formatting begins.
 * NeoWidEx does not disable Widget recovery mode on it own; if it detects that
-  recovery mode is enabled, it asks the user to take care of it themselves and
-  then aborts.
+  recovery mode is enabled, it asks the user to take care of it themselves (use
+  the [SET RECOVERY](#set-recovery) main menu option) and then aborts.
 * Immediately prior to the full formatting sweep and just after the drive
   performs a format recalibration, NeoWidEx asks the drive for its current
   cylinder. NeoWidEx assumes that this cylinder is the cylinder where it should
@@ -660,9 +721,9 @@ addresses, the calculations performed by these menu options don't pay attention
 to the Widget's actual spare table, so logical block addresses are always
 assumed to point to their original non-spare-block sectors. It is easy enough
 to account for sparing on your own, though: using the SPARE TABLE option (the
-same as [SPARE TABLE](#spare-table) in the main menu), look for your logical
-block address in the `LBA` column, check that the `IN USE`, `USABLE`, and
-`SPARE TYPE` columns say `YES`, `YES`, and `SPARE` respectively, then enter
+same as [SPARE TABLE](#star-spare-table) in the main menu), look for your
+logical block address in the `LBA` column, check that the `IN USE`, `USABLE`,
+and `SPARE TYPE` columns say `YES`, `YES`, and `SPARE` respectively, then enter
 the spare number under the `NUM` column at left into the form presented by the
 `SPARE` menu option.
 
