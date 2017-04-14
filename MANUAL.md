@@ -494,7 +494,7 @@ starting block the next time GREP BLOCKS is invoked.
 #### :star: EXERCISE DISK
 
 ![NeoWidEx exercise disk screenshot](
-images/ExerciseDisk_0.3.jpg "NeoWidEx exercise disk display")
+images/ExerciseDisk_0.3.png "NeoWidEx exercise disk display")
 
 NeoWidEx advances in user-specified fixed increments through blocks on the
 drive, looping around to the beginning if it would otherwise advance past the
