@@ -341,20 +341,30 @@ the Widget was last formatted, which in most cases should be the parameters
 stored in the existing spare table. This information can be recovered from the
 [DRIVE INFO](#drive-info) option.
 
+Prior to confirming whether you really wish to reinitialise the spare tables,
+NeoWidEx displays the sequence of command bytes it will issue to the Widget,
+allowing you to confirm them against the command specification in the ERS
+document.
+
 :warning: `Initialize_SpareTable` does not remove any other spare tables that
 might be present on the Widget---a condition that can occur if the Widget
-decides that one of the default spare table locations should itself be
-spared to another spare block. After the command executes, the default locations
-will be overwritten, but the "spared" spare table will still linger on
-disk---and because it has a larger serial number, the Widget will still
-consider it authoritative whenever it reloads the spare table.
+decides that one of the default spare table locations should itself be spared
+to another spare block. After the command executes, the default locations will
+be overwritten, but the "spared" spare table will still linger on disk---and
+because it has a larger serial number, the Widget will still consider it
+authoritative whenever it reloads the spare table.
 
 #### FORMAT TRACK
 
 NeoWidEx issues the `Format_Track` command with user-provided offset and
 interleave parameters. This command does not format the entire disk but only
 the track that is currently underneath the heads, and only the head that was
-designated by the last seek.
+designated by the last seek. For a full drive format, use the [FORMAT](#format)
+utility.
+
+Prior to confirming whether you really wish to format the track, NeoWidEx
+displays the sequence of command bytes it will issue to the Widget, allowing
+you to confirm them against the command specification in the ERS document.
 
 :warning: Using the [SEEK](#seek) and [AUTOOFFSET](#autooffset) menu options
 immediately prior to FORMAT TRACK helps ensure that the formatting signal is
@@ -557,9 +567,58 @@ the data written to the drive fails to match the CRC of the data read back.
 
 #### FORMAT
 
-Format might not issue a scan
+NeoWidEx formats **all** tracks on the drive with user-specified format offset
+and interleave parameters (see [FORMAT TRACK](#format-track)), then initialises
+the two spare table records in their default locations (see [INIT SPR TBL](
+#init-spr-tbl)).
 
-:warning: This option can easily destroy all data on your hard drive.
+With slight differences, NeoWidEx attempts to issue the same commands as
+Apple's own Widget formatting tool for the Apple /// computer (as recorded on
+a logic analyser by Dr. Patrick Schäfer). This means that a trial format is
+carried out on cylinder 0, head 0, followed by the format of all tracks in
+reverse order, decrementing first by head and then by cylinder. After all tracks
+are formatted, the drive is reset, the two spare table records are initialised,
+the drive is reset again, and a surface scan is performed.
+
+Differences from the Apple /// procedure are as follows:
+
+* Prior to formatting a track, NeoWidEx issues the `Set_AutoOffset` command
+  three times instead of once, which may give the heads an opportunity to
+  better settle on the centre of the track.
+* NeoWidEx cannot hard-reset the Widget before formatting begins.
+* NeoWidEx does not disable Widget recovery mode on it own; if it detects that
+  recovery mode is enabled, it asks the user to take care of it themselves and
+  then aborts.
+* Immediately prior to the full formatting sweep and just after the drive
+  performs a format recalibration, NeoWidEx asks the drive for its current
+  cylinder. NeoWidEx assumes that this cylinder is the cylinder where it should
+  begin the full format. This appears to yield the same range of cylinders that
+  the Apple /// formatter uses, but this assumption may not be correct for rare,
+  larger Widgets that never made it outside of Apple.
+
+As it carries out the format, NeoWidEx interrogates the Widget for the fine
+head offset chosen by the servo's automatic track following facility (as
+ordered by the `Set_AutoOffset` commands). If this offset is larger than
+`$10`, NeoWidEx observes that the offset is getting large, which may be a
+harbinger of future problems.
+
+Prior to confirming whether you really wish to format the drive, NeoWidEx
+displays the sequences of command bytes it will issue to the Widget when it
+invokes `Format_Track` and `Initialize_SpareTable`, allowing you to confirm
+them against the command specification in the ERS document.
+
+If the user indicates that they don't wish to format the drive after all,
+NeoWidEx provides the opportunity to execute a "dry run" of the formatting
+procedure, where all commands except `Format_Track` ands
+ `Initialize_SpareTable`---the two that modify the drive---are issued. In this
+mode, NeoWidEx will complain that the controller state after the first drive
+reset are not as expected; this is safe to ignore. (NeoWidEx expects the
+drive to complain about not having a spare table, but without an actual format,
+the spare table will not have been cleared.)
+
+FORMAT cannot be cancelled once it has begun its work.
+
+:warning: This option will destroy all data on your hard drive.
 
 #### :star: ADDRESSING...
 
