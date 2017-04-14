@@ -27,6 +27,9 @@ particularly PDF pages 81-135.
 
 ## Table of contents
 
+_All items prefixed with a star (:star:) describe functionality compatible with
+any drive that supports the ProFile drive protocol._
+
 * [System requirements](#system-requirements)
   - [Details](#details)
 * [User interface notes](#user-interface-notes)
@@ -80,7 +83,7 @@ particularly PDF pages 81-135.
    [:star: EXERCISE DISK](#star-exercise-disk),
    [TRACK OFFSETS](#track-offsets),
    [FORMAT](#format),
-   [:star: ADDRESSING...](#star-addressing...)
+   [:star: ADDRESSING...](#star-addressing)
 
 * [Acknowledgements](#acknowledgements)
 
