@@ -591,9 +591,9 @@ the heads skipping back and forth over the disk platter, which can be useful if
 you wish to put your head servoing mechanism to the test. On an ordinary
 Widget, the nearest relative primes to half the disk capacity (`$25FF` and
 `$2601$`) causes the head to seek back and forth over half the cylinders
-between each write, "crab-walking" from one edge of the platter to the other.
-The largest possible increment for Widget, $4BFF, will actually send the heads
-creeping "backwards" across the surface. (Modular arithmetic is fun!)
+between each write, slowly "crab-walking" from one edge of the platter to the
+other. The largest possible increment for Widget, $4BFF, will actually send
+the heads creeping "backwards" across the surface. (Modular arithmetic is fun!)
 
 Either the existing contents of the disk data buffer or pseudorandom data
 (generated with the same algorithm used by [RANDOM FILL](#star-random-fill) can
@@ -629,6 +629,35 @@ the data written to the drive fails to match the CRC of the data read back.
 
 #### TRACK OFFSETS
 
+After requesting a seek address from the user (chiefly to determine which head
+to use in what follows), NeoWidEx performs a data recalibration, then seeks
+downward to the Widget's first cylinder. After that, it seeks back upward
+through every cylinder, invoking the servo's automatic track following facility
+three times after each seek (via the `Set_AutoOffset` command). It then
+interrogates the Widget to obtain the fine head offset selected by the servo,
+printing the result to the screen in a large table that looks like the
+following:
+
+```
+       00 01 02 03  04 05 06 07  08 09 0A 0B  0C 0D 0E 0F
+0000  -02-03-03-02 -01 00 00 01  01 01 03 03  04 05 05 06
+0010   07 07 07 08  09 0A 0A 09  08 08 07 07  06 06 05 05
+0020   05 04 04 03  03 02 02 01  00-01-01-02 -03-04-04-04
+```
+
+Each row lists results for sixteen cylinders: to determine which cylinder is
+represented by a particular entry, add the row header (e.g. `$0020`) to the
+column header (e.g. `$0D`; `$0020` + `$0D` = `$002D`). Any minus sign `-`
+negates the number immediately to the right; the display is too small to
+separate negative numbers with a space. In general, an offset larger than
+`$10` is considered large and may portend trouble with your servo.
+
+The user can cancel the procedure by typing **Q**.
+
+The TRACK OFFSETS option uses low-level servo commands to perform most of its
+head movement. There is no particular reason for this; it was mainly done this
+way as an exercise for its author.
+
 #### FORMAT
 
 NeoWidEx formats **all** tracks on the drive with user-specified format offset
@@ -662,7 +691,7 @@ Differences from the Apple /// procedure are as follows:
 
 As it carries out the format, NeoWidEx interrogates the Widget for the fine
 head offset chosen by the servo's automatic track following facility (as
-ordered by the `Set_AutoOffset` commands). If this offset is larger than
+ordered by the `Set_AutoOffset` command). If this offset is larger than
 `$10`, NeoWidEx observes that the offset is getting large, which may be a
 harbinger of future problems.
 
