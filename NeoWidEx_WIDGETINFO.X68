@@ -21,7 +21,7 @@
     ;   If WIDGETINFO runs, has all of WIDGETINFO's side-effects.
 WINFOMAYBE:
     TST.B   zHaveInfo                ; Have we run WIDGETINFO yet?
-    BEQ.S   WIDGETINFO               ; No, go run it!
+    BEQ.W   WIDGETINFO               ; No, go run it!
     RTS                              ; Yes, back to the caller.
 
     ; WINFOSTATUSCHECK -- Invalidate cached Widget info if spare table changes
@@ -47,15 +47,38 @@ WINFOSTATUSCHECK:
     ;   If zIsWidgety is zero (after running WIDGETINFO if needed), the return
     ;       address for the call to WIDGETCHECK is dropped and RTS is executed,
     ;       returning to the caller's caller.
+    ;   If the attached drive does NOT demonstrate that it's a Widget, allows
+    ;       the user to force us to pretend that it is; the choice will stick
+    ;       until WIDGETINFO runs again.
+    ;   If forced to pretend that the drive is a working Widget, control jumps
+    ;       into the middle of WIDGETINFO (gross!) to update cached information.
     ;   Will NOT work if the subroutine that called WIDGETCHECK places ANYTHING
     ;       on the stack prior to the BSR or JSR to WIDGETCHECK.
 WIDGETCHECK:
     BSR.B   WINFOMAYBE               ; Run WIDGETINFO if it hasn't been run yet
     TST.B   zIsWidgety               ; Do we have a Widget?
-    BNE.S   .rt                      ; Yes, skip ahead to return
-    mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'YOU NEED A WIDGET TO DO THAT.'>
+    BEQ.S   .no                      ; No, skip ahead to complain
+    RTS                              ; Yes, return to caller
+.no mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'YOU NEED A WIDGET TO DO THAT.'>
+    LEA     s_WInfoFakeForm,A0       ; Prepare FORM args: address of template...
+    LEA     s_WInfoFakePrompts,A1    ; ...address of prompt pointer array...
+    LEA     s_WInfoFakeInitialVals,A2  ; ...address of custom initial values...
+    SUBA.L  A3,A3                    ; ...no custom value bounds
+    BSR     FORM                     ; Display form; get user input
+
+    ; Back from form; did user want to cancel?
+    TST.B   zFormIntent              ; Did the user cancel by typing 'Q'?
+    BEQ.S   .qt                      ; Yes, go ahead to ack user and cancel
+    TST.B   (3+zFieldValues)         ; Did the user cancel by submitting 'N'?
+    BEQ.S   .qt                      ; Yes, go ahead to ack user and cancel
+
+    ; The user would like to pretend that we have a working Widget installed.
+    mMemCpy #(sFakeWidgetIdBlock),#zSectorTag,#$24   ; Copy a fake $FFFFFF block
+    BRA.S   _WINFOGATHER             ; Jump inside WIDGETINFO to analyse it :-P
+
+.qt mPrint  kCrtRow,kCrtCol,#kFirstCol,<$0D,'...ABORTED...'>   ; Ack user
     ADDQ.L  #4,A7                    ; Prepare to bail to the caller's caller
-.rt RTS                              ; Return to caller, or caller's caller
+    RTS                              ; Return to caller's caller
 
     ; WIDGETINFO -- Gather information from the $FFFFFF sector
     ; Args:
@@ -65,12 +88,17 @@ WIDGETCHECK:
     ;   On error, the carry bit is set. Only SECTOR will report any error
     ;       condition, so see SECTOR documentation for interpreting its
     ;       error output.
+    ;   WIDGETCHECK can jump into the middle of this subroutine; how rude!
 WIDGETINFO:
-    ; Load the Widget's spare table.
-    MOVE.L  #$00FFFFFF,D1            ; Sector ID for Widget spare table
-    BSR     SECTOR                   ; Read the spare table
-    BCS     .rt                      ; Jump to return on error
+    ; Load the Widget's identity block.
+    MOVE.L  #$00FFFFFF,D1            ; Sector ID for Widget identity block
+    BSR     SECTOR                   ; Read the identity block
+    BCC.S   _WINFOGATHER             ; Gather information on success
+    RTS                              ; Or return on error
 
+    ; (The part of WIDGETINFO that parses the $FFFFFF sector)
+    ; (Not really a subroutine, but WIDGETCHECK cheats and jumps here)
+_WINFOGATHER:
     ; Copy the device name (the first 13 bytes).
     mMemCpy #zSectorTag,#zDeviceName,#$D
 
@@ -782,6 +810,32 @@ sSigFallback:
     DC.W    0
     DC.B    0                        ; Whatever it is, it's not Widgety
     DC.B    'UNKNOWN DRIVE TYPE',0
+
+s_WInfoFakeForm:                     ; User form for option to fake a Widget
+    DC.B    $0D,'PRETEND THERE IS A WORKING WIDGET? a',0
+
+    DS.W    0
+s_WInfoFakePrompts:
+    DC.L    .p1
+.p1 DC.B    'FAKE IT',0
+
+    DS.W    0
+s_WInfoFakeInitialVals:
+    DC.L    $00000001
+
+sFakeWidgetIdBlock:
+    DC.B    'Widget-10    '          ; Drive name
+    DC.B    $00,$01                  ; This fake drive is a Widget
+    DC.B    $00                      ; A 10 MB device with non-debug firmware
+    DC.B    $1A,$45                  ; Firmware revision 1A45
+    DC.B    $00,$4C,$00              ; Capacity: $4C00 blocks
+    DC.B    $02,$14                  ; $214 bytes per block
+    DC.B    $02,$02                  ; $202 cylinders
+    DC.B    $02                      ; $2 heads
+    DC.B    $13                      ; $13 sectors per track
+    DC.B    $00,$00,$4C              ; $4C spare blocks available
+    DC.B    $00,$00,$00              ; No spare blocks in use
+    DC.B    $00,$00,$00              ; No bad blocks
 
 sStatusBitmap:
     DC.B    '                -BYTE 0-                         -BYTE 1-',$0D

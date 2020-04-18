@@ -7,6 +7,9 @@ hard drive that Apple Computer designed and manufactured the 1980s. It runs on
 the Apple Lisa 2/10 computer, the only computer Apple ever sold with a Widget
 inside.
 
+_Note: The current version of NeoWidEx is now 0.4, which looks nearly
+identical to the screen image above._
+
 ## Fair warning
 
 NeoWidEx can easily destroy all of the data on your Widget, quickly and

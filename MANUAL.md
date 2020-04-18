@@ -7,6 +7,9 @@ hard drive that Apple Computer designed and manufactured the 1980s. It runs on
 the Apple Lisa 2/10 computer, the only computer Apple ever sold with a Widget
 inside.
 
+_Note: The current version of NeoWidEx is now 0.4, which looks nearly
+identical to the screen image above._
+
 ## Fair warning
 
 NeoWidEx can easily destroy all of the data on your Widget, quickly and
@@ -36,6 +39,7 @@ any drive that supports the ProFile drive protocol._
   - [Accessibility](#accessibility)
   - [Hexadecimal numbers](#hexadecimal-numbers)
   - [Forms](#forms)
+* [Forcing "detection" of a Widget](#forcing-detection-of-a-widget)
 * [Main menu options](#main-menu-options)
 
    [:star: LAST STATUS](#star-last-status),
@@ -97,7 +101,9 @@ You can get started right away with NeoWidEx if you have:
 
 NeoWidEx will run on a Lisa 2/5---that is, a Lisa 2 with a built-in external
 parallel port---but it will only be able to access drives attached to that
-port. Most NeoWidEx options will be unavailable unless that drive is a Widget.
+port. Most NeoWidEx options will be unavailable unless that drive is a Widget,
+or unless you force NeoWidEx to treat the drive as a Widget (see [Forcing
+"detection" of a Widget](#forcing-detection-of-a-widget) below).
 
 The [LisaEm](http://lisa.sunder.net) emulator will run NeoWidEx, although
 because LisaEm does not emulate a Widget, many options will be unavailable.
@@ -108,7 +114,7 @@ because LisaEm does not emulate a Widget, many options will be unavailable.
 from a floppy disk (or from a floppy drive emulator like Floppy Emu). Other
 methods of starting NeoWidEx may be possible but have not been attempted.
 NeoWidEx expects the Lisa's memory to be configured [as the Boot ROM arranges
-it on startup](https://github.com/stpltn/bootloader#operational-description),
+it on startup](https://github.com/stepleton/bootloader#operational-description),
 and NeoWidEx itself should be loaded into a contiguous memory region starting
 at address `$000800`. NeoWidEx's code is not relocatable.
 
@@ -170,6 +176,34 @@ Type **Q** to abandon the form and cancel the operation currently underway.
 And finally, type **Enter** or **X** to submit the form and continue the
 operation in progress.
 
+## Forcing "detection" of a Widget
+
+The first time you select one of the Widget-specific menu options, NeoWidEx
+attempts to verify that a Widget is present by reading and parsing the hard
+drive's "identity block" at logical address `$FFFFFF`. If this investigation
+cannot determine that the hard drive is a Widget---for example, it won't work
+on a real Widget that failed its power-on self tests---NeoWidEx asks if you
+would like to override the failed verification and "pretend" that a working
+Widget is installed. If you choose to do this, NeoWidEx proceeds as if it were
+communicating with a standard 10 MB Widget; otherwise, it aborts the operation
+in progress.
+
+A Widget that fails its self tests may still be able to respond to various
+Widget-specific commands, so forcing NeoWidEx to operate this way may help in
+troubleshooting a broken drive. (The several drive status menu options may be
+especially useful.)
+
+:warning: Non-Widget drives may respond to Widget commands in unexpected and
+undesirable ways. Data loss, device damage, or more mundane effects like
+crashing NeoWidEx cannot be ruled out. Consider overriding Widget detection
+only when an actual Widget is connected to your Lisa.
+
+NeoWidEx will continue to "pretend" that a working Widget is present until it
+refreshes its cached information about the drive. The [DRIVE INFO](
+#star-drive-info) menu option forces this refresh to occur; additionally, some
+menu options may also force this refresh if they detect that the Widget has
+updated its spare table.
+
 ## Main menu options
 
 ![NeoWidEx main menu](images/MainMenu_0.3.png "Main menu display")
@@ -192,7 +226,10 @@ NeoWidEx reads block `$FFFFFF` from the drive, a "virtual block" that contains
 information about the drive's parameters (its "`Device_ID`" structure).
 NeoWidEx parses and presents this data.
 
-This command will not work on a Widget that has failed its self tests.
+This command will not work on a Widget that has failed its self tests. It will
+also cancel any override of NeoWidEx's failure to detect a Widget drive. See
+[Forcing "detection" of a Widget](#forcing-detection-of-a-widget) for more
+details.
 
 #### :star: SPARE TABLE
 

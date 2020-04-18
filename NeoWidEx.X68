@@ -67,11 +67,12 @@ NEOWIDEX:
     ;   (none)
 _THANKS:
     ADDQ.B  #1,zIterations
-    BTST.B  #2,zIterations
-    BNE.S   .fa
+    CMPI.B  #4,zIterations
+    BGE.S   .fa
     mPrtMem kCrtRow,kCrtCol,#kFirstCol,export,#sThanks
     RTS
-.fa JMP     FA1D
+.fa CLR.B   zIterations
+    JMP     FA1D
 
     ; _NOTYET -- Placeholder for as-yet unimplemented code
     ; Args:
@@ -179,7 +180,7 @@ dMainMenuHandlers:                   ; Addresses of handlers for each of the...
     SECTION kSecScratch
 
 zIterations:
-    DC.B    $FF
+    DC.B    $00
 
 
     PAGE
